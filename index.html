@@ -3,60 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureTalk | Privacidad Total</title>
+    <title>SecureTalk | Global Fix</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .video-mirror { transform: scaleX(-1); }
-        #video-grid video { background: #000; border-radius: 1rem; object-fit: cover; width: 100%; height: 100%; }
+        #video-grid video { background: #000; border-radius: 1rem; object-fit: cover; width: 100%; height: 100%; min-height: 200px; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans overflow-hidden">
 
     <div id="login" class="flex flex-col items-center justify-center h-screen p-4">
         <div class="bg-slate-900 p-8 rounded-3xl shadow-2xl border border-slate-800 w-full max-w-md text-center">
-            <div class="text-5xl mb-4">🔐</div>
-            <h1 class="text-3xl font-black mb-2 bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">SecureTalk</h1>
-            <p class="text-slate-400 mb-8 text-sm">Introduce un código secreto. Nadie más podrá entrar ni leer tus mensajes sin él.</p>
-            
-            <input type="text" id="roomCode" placeholder="CÓDIGO SECRETO" 
-                class="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 mb-4 focus:border-blue-500 outline-none text-center font-mono uppercase tracking-widest">
-            
-            <button onclick="startApp()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold text-lg transition-all shadow-lg shadow-blue-900/40">
-                Iniciar Sala Segura
-            </button>
+            <h1 class="text-3xl font-black mb-6 bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">SecureTalk</h1>
+            <input type="text" id="roomCode" placeholder="CÓDIGO DE SALA" 
+                class="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 mb-4 focus:border-blue-500 outline-none text-center font-mono uppercase">
+            <button onclick="startApp()" class="w-full bg-blue-600 py-4 rounded-xl font-bold text-lg shadow-lg">Entrar</button>
         </div>
     </div>
 
     <div id="room" class="hidden h-screen flex flex-col">
         <header class="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span class="font-mono text-xs text-slate-400">SALA: <b id="displayCode" class="text-white"></b></span>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="copyInvite()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition">🔗 Invitar</button>
-                <button onclick="location.reload()" class="bg-red-900/30 hover:bg-red-600 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition">Salir</button>
-            </div>
+            <span class="text-xs font-mono">SALA: <b id="displayCode"></b></span>
+            <button onclick="copyInvite()" class="bg-slate-800 px-3 py-1 rounded text-[10px]">Copiando Link...</button>
         </header>
 
         <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
-            <div id="video-grid" class="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-fr bg-slate-950 overflow-y-auto">
-                <div class="relative rounded-2xl overflow-hidden border border-slate-800">
+            <div id="video-grid" class="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950 overflow-y-auto">
+                <div class="relative rounded-2xl overflow-hidden border border-slate-800 h-64 md:h-full">
                     <video id="localVideo" autoplay muted playsinline class="video-mirror"></video>
-                    <div class="absolute bottom-4 left-4 bg-black/50 px-3 py-1 rounded-full text-[10px]">Tú</div>
                 </div>
             </div>
-
-            <div class="w-full md:w-80 bg-slate-900 border-l border-slate-800 flex flex-col">
-                <div id="messages" class="flex-1 p-4 overflow-y-auto space-y-3 text-sm"></div>
-                <div class="p-4 bg-slate-950 border-t border-slate-800">
-                    <form onsubmit="event.preventDefault(); sendMessage();" class="flex gap-2">
-                        <input type="text" id="chatInput" placeholder="Mensaje cifrado..." class="flex-1 bg-slate-900 p-2 rounded-lg outline-none border border-slate-800 text-sm focus:border-blue-500">
-                        <button type="submit" class="bg-blue-600 px-3 rounded-lg">➤</button>
-                    </form>
-                </div>
+            <div id="chat" class="w-full md:w-80 bg-slate-900 border-l border-slate-800 flex flex-col h-1/3 md:h-auto">
+                <div id="messages" class="flex-1 p-4 overflow-y-auto space-y-2 text-sm"></div>
+                <form onsubmit="event.preventDefault(); sendMessage();" class="p-4 bg-slate-950 flex gap-2">
+                    <input type="text" id="chatInput" placeholder="Mensaje..." class="flex-1 bg-slate-900 p-2 rounded border border-slate-800 outline-none">
+                    <button class="bg-blue-600 px-3 rounded">➤</button>
+                </form>
             </div>
         </main>
     </div>
@@ -64,12 +48,20 @@
     <script>
         let peer, localStream, roomCode, currentConn;
 
-        // Cargar código desde URL si existe
+        // Servidores de Google para que la conexión salte el 4G/5G (STUN Servers)
+        const peerConfig = {
+            config: {
+                'iceServers': [
+                    { url: 'stun:stun.l.google.com:19302' },
+                    { url: 'stun:stun1.l.google.com:19302' },
+                    { url: 'stun:stun2.l.google.com:19302' }
+                ]
+            }
+        };
+
         window.onload = () => {
             const params = new URLSearchParams(window.location.search);
-            if(params.get('room')) {
-                document.getElementById('roomCode').value = params.get('room');
-            }
+            if(params.get('room')) document.getElementById('roomCode').value = params.get('room');
         };
 
         async function startApp() {
@@ -80,44 +72,32 @@
             document.getElementById('room').classList.remove('hidden');
             document.getElementById('displayCode').innerText = roomCode;
 
-            // Iniciar Cámara
-            localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-            document.getElementById('localVideo').srcObject = localStream;
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+                document.getElementById('localVideo').srcObject = localStream;
+            } catch(e) { alert("Error cámara. Asegúrate de usar HTTPS"); }
 
-            initPeer();
-        }
+            // Intentamos ser el Anfitrión (ID fijo)
+            peer = new Peer('st-' + roomCode, peerConfig);
 
-        function initPeer() {
-            // El primer usuario intenta ser el HOST
-            peer = new Peer('st-' + roomCode);
-
-            peer.on('open', id => {
-                console.log("Eres el anfitrión");
-                // Escuchar llamadas (de invitados)
+            peer.on('open', () => {
+                console.log("Anfitrión listo");
                 peer.on('call', call => {
                     call.answer(localStream);
-                    call.on('stream', stream => renderVideo(stream, call.peer));
+                    call.on('stream', s => renderVideo(s, call.peer));
                 });
-                // Escuchar chat (de invitados)
-                peer.on('connection', conn => setupChat(conn));
+                peer.on('connection', c => setupChat(c));
             });
 
-            peer.on('error', err => {
+            peer.on('error', (err) => {
                 if(err.type === 'unavailable-id') {
-                    // Si el ID existe, somos INVITADOS
-                    console.log("Entrando como invitado...");
-                    peer = new Peer(); // ID aleatorio para nosotros
+                    // Ya hay anfitrión, somos invitados (ID aleatorio)
+                    peer = new Peer(null, peerConfig);
                     peer.on('open', () => {
-                        // Llamamos al host
                         const call = peer.call('st-' + roomCode, localStream);
-                        call.on('stream', stream => renderVideo(stream, 'st-' + roomCode));
-                        
-                        // Conectamos chat al host
-                        const conn = peer.connect('st-' + roomCode);
-                        setupChat(conn);
+                        call.on('stream', s => renderVideo(s, 'st-' + roomCode));
+                        setupChat(peer.connect('st-' + roomCode));
                     });
-                } else {
-                    console.error("Error de Peer:", err);
                 }
             });
         }
@@ -126,8 +106,7 @@
             currentConn = conn;
             conn.on('data', data => {
                 const bytes = CryptoJS.AES.decrypt(data, roomCode);
-                const descifrado = bytes.toString(CryptoJS.enc.Utf8);
-                if(descifrado) addMsg(descifrado, 'Invitado', 'text-emerald-400');
+                addMsg(bytes.toString(CryptoJS.enc.Utf8), 'Otro', 'text-emerald-400');
             });
         }
 
@@ -135,35 +114,32 @@
             if(document.getElementById(id)) return;
             const div = document.createElement('div');
             div.id = id;
-            div.className = "relative rounded-2xl overflow-hidden border border-blue-500/50 shadow-lg shadow-blue-500/10";
-            div.innerHTML = `<video autoplay playsinline></video><div class="absolute bottom-4 left-4 bg-blue-600/60 px-3 py-1 rounded-full text-[10px]">Remoto</div>`;
+            div.className = "relative rounded-2xl overflow-hidden border border-blue-500 h-64 md:h-full";
+            div.innerHTML = `<video autoplay playsinline></video>`;
             div.querySelector('video').srcObject = stream;
             document.getElementById('video-grid').append(div);
         }
 
         function sendMessage() {
-            const msg = document.getElementById('chatInput').value;
-            if(!msg || !currentConn) return;
-
-            const cifrado = CryptoJS.AES.encrypt(msg, roomCode).toString();
-            currentConn.send(cifrado);
-            addMsg(msg, 'Tú', 'text-blue-400');
+            const val = document.getElementById('chatInput').value;
+            if(!val || !currentConn) return;
+            currentConn.send(CryptoJS.AES.encrypt(val, roomCode).toString());
+            addMsg(val, 'Tú', 'text-blue-400');
             document.getElementById('chatInput').value = '';
         }
 
-        function addMsg(text, user, color) {
-            const messages = document.getElementById('messages');
-            const div = document.createElement('div');
-            div.className = "bg-slate-800/40 p-3 rounded-xl border border-slate-800";
-            div.innerHTML = `<span class="text-[10px] font-bold uppercase ${color}">${user}</span><p class="mt-1">${text}</p>`;
-            messages.appendChild(div);
-            messages.scrollTop = messages.scrollHeight;
+        function addMsg(t, u, c) {
+            const m = document.getElementById('messages');
+            const d = document.createElement('div');
+            d.innerHTML = `<b class="${c}">${u}:</b> ${t}`;
+            m.appendChild(d);
+            m.scrollTop = m.scrollHeight;
         }
 
         function copyInvite() {
             const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
             navigator.clipboard.writeText(url);
-            alert("Enlace de invitación copiado. Pásalo a tu contacto.");
+            alert("Link copiado. Envíalo por WhatsApp.");
         }
     </script>
 </body>
