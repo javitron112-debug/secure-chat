@@ -3,187 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureTalk | Comunicación Efímera</title>
+    <title>SecureTalk | Privacidad Total</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .video-container video { transform: scaleX(-1); } /* Efecto espejo para uno mismo */
-        .remote-video video { transform: scaleX(1); }
+        .video-mirror { transform: scaleX(-1); }
+        #video-grid video { background: #000; border-radius: 1rem; object-fit: cover; width: 100%; height: 100%; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans overflow-hidden">
 
-    <div id="login" class="flex flex-col items-center justify-center h-screen transition-all">
-        <div class="bg-slate-900 p-10 rounded-3xl shadow-2xl border border-slate-800 w-full max-w-md text-center">
+    <div id="login" class="flex flex-col items-center justify-center h-screen p-4">
+        <div class="bg-slate-900 p-8 rounded-3xl shadow-2xl border border-slate-800 w-full max-w-md text-center">
             <div class="text-5xl mb-4">🔐</div>
             <h1 class="text-3xl font-black mb-2 bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">SecureTalk</h1>
-            <p class="text-slate-400 mb-8 text-sm">Introduce un código privado para iniciar o unirte.</p>
+            <p class="text-slate-400 mb-8 text-sm">Introduce un código secreto. Nadie más podrá entrar ni leer tus mensajes sin él.</p>
             
-            <input type="text" id="roomCode" placeholder="Ej: mi-reunion-secreta" 
-                class="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 mb-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-center font-mono uppercase tracking-widest">
+            <input type="text" id="roomCode" placeholder="CÓDIGO SECRETO" 
+                class="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 mb-4 focus:border-blue-500 outline-none text-center font-mono uppercase tracking-widest">
             
-            <button onclick="startApp()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold text-lg transition-all shadow-lg shadow-blue-900/20">
-                Entrar a la Sala
+            <button onclick="startApp()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold text-lg transition-all shadow-lg shadow-blue-900/40">
+                Iniciar Sala Segura
             </button>
         </div>
     </div>
 
-    <div id="room" class="hidden h-screen flex flex-col transition-all">
-        <header class="p-4 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <span class="flex h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></span>
-                <h2 class="font-mono font-bold">SALA: <span id="displayCode" class="text-blue-400"></span></h2>
+    <div id="room" class="hidden h-screen flex flex-col">
+        <header class="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span class="font-mono text-xs text-slate-400">SALA: <b id="displayCode" class="text-white"></b></span>
             </div>
             <div class="flex gap-2">
-                <button onclick="copyInvite()" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition">🔗 COPIAR INVITACIÓN</button>
-                <button onclick="location.reload()" class="bg-red-900/50 hover:bg-red-600 px-4 py-2 rounded-lg text-xs font-bold transition">SALIR</button>
+                <button onclick="copyInvite()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition">🔗 Invitar</button>
+                <button onclick="location.reload()" class="bg-red-900/30 hover:bg-red-600 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition">Salir</button>
             </div>
         </header>
 
         <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
-            <div id="video-grid" class="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-fr overflow-y-auto bg-slate-950">
-                <div class="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 video-container">
-                    <video id="localVideo" autoplay muted playsinline class="w-full h-full object-cover"></video>
-                    <div class="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs">Tú (Local)</div>
+            <div id="video-grid" class="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 auto-rows-fr bg-slate-950 overflow-y-auto">
+                <div class="relative rounded-2xl overflow-hidden border border-slate-800">
+                    <video id="localVideo" autoplay muted playsinline class="video-mirror"></video>
+                    <div class="absolute bottom-4 left-4 bg-black/50 px-3 py-1 rounded-full text-[10px]">Tú</div>
                 </div>
             </div>
 
             <div class="w-full md:w-80 bg-slate-900 border-l border-slate-800 flex flex-col">
-                <div id="messages" class="flex-1 p-4 overflow-y-auto space-y-3 text-sm">
-                    <p class="text-slate-500 italic text-center text-xs">Los mensajes se cifran con tu código y no se guardan en ningún servidor.</p>
-                </div>
-                <div class="p-4 bg-slate-950">
-                    <div class="flex gap-2">
-                        <input type="text" id="chatInput" placeholder="Escribe algo..." class="flex-1 bg-slate-900 p-2 rounded-lg outline-none border border-slate-800 focus:border-blue-500 text-sm">
-                        <button onclick="sendMessage()" class="bg-blue-600 p-2 rounded-lg">➤</button>
-                    </div>
+                <div id="messages" class="flex-1 p-4 overflow-y-auto space-y-3 text-sm"></div>
+                <div class="p-4 bg-slate-950 border-t border-slate-800">
+                    <form onsubmit="event.preventDefault(); sendMessage();" class="flex gap-2">
+                        <input type="text" id="chatInput" placeholder="Mensaje cifrado..." class="flex-1 bg-slate-900 p-2 rounded-lg outline-none border border-slate-800 text-sm focus:border-blue-500">
+                        <button type="submit" class="bg-blue-600 px-3 rounded-lg">➤</button>
+                    </form>
                 </div>
             </div>
         </main>
-
-        <footer class="p-6 bg-slate-900 border-t border-slate-800 flex justify-center items-center gap-8">
-            <button id="btnMic" onclick="toggleMic()" class="group flex flex-col items-center gap-2">
-                <div class="p-4 bg-slate-800 group-hover:bg-slate-700 rounded-full transition">🎙️</div>
-                <span class="text-[10px] uppercase tracking-tighter">Micro</span>
-            </button>
-            <button id="btnCam" onclick="toggleCam()" class="group flex flex-col items-center gap-2">
-                <div class="p-4 bg-slate-800 group-hover:bg-slate-700 rounded-full transition">📷</div>
-                <span class="text-[10px] uppercase tracking-tighter">Cámara</span>
-            </button>
-            <button onclick="shareScreen()" class="group flex flex-col items-center gap-2 text-emerald-400">
-                <div class="p-4 bg-emerald-900/20 group-hover:bg-emerald-900/40 rounded-full transition border border-emerald-500/30">🖥️</div>
-                <span class="text-[10px] uppercase tracking-tighter">Presentar</span>
-            </button>
-        </footer>
     </div>
 
     <script>
         let peer, localStream, roomCode, currentConn;
-        let isMicOpen = true;
-        let isCamOpen = true;
 
-        // Auto-completar código si viene en la URL
+        // Cargar código desde URL si existe
         window.onload = () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            if(urlParams.get('room')) document.getElementById('roomCode').value = urlParams.get('room');
-        }
+            const params = new URLSearchParams(window.location.search);
+            if(params.get('room')) {
+                document.getElementById('roomCode').value = params.get('room');
+            }
+        };
 
         async function startApp() {
             roomCode = document.getElementById('roomCode').value.trim().toLowerCase();
-            if(!roomCode) return alert("Introduce un código");
+            if(!roomCode) return alert("Escribe un código");
 
             document.getElementById('login').classList.add('hidden');
             document.getElementById('room').classList.remove('hidden');
             document.getElementById('displayCode').innerText = roomCode;
 
+            // Iniciar Cámara
             localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
             document.getElementById('localVideo').srcObject = localStream;
 
-            // ID único basado en el código para evitar colisiones globales
-            peer = new Peer('st-room-' + roomCode);
+            initPeer();
+        }
+
+        function initPeer() {
+            // El primer usuario intenta ser el HOST
+            peer = new Peer('st-' + roomCode);
 
             peer.on('open', id => {
-                // Intentar conectar con otros (Lógica simple: todos intentan llamar a la sala)
-                // En PeerJS avanzado usaríamos un servidor de señalización, pero esto sirve para 1:1 directo.
-                console.log("Conectado con ID:", id);
+                console.log("Eres el anfitrión");
+                // Escuchar llamadas (de invitados)
+                peer.on('call', call => {
+                    call.answer(localStream);
+                    call.on('stream', stream => renderVideo(stream, call.peer));
+                });
+                // Escuchar chat (de invitados)
+                peer.on('connection', conn => setupChat(conn));
             });
 
-            peer.on('call', call => {
-                call.answer(localStream);
-                call.on('stream', remoteStream => addRemoteVideo(remoteStream, call.peer));
-            });
-
-            peer.on('connection', conn => {
-                currentConn = conn;
-                conn.on('data', data => receiveMessage(data));
+            peer.on('error', err => {
+                if(err.type === 'unavailable-id') {
+                    // Si el ID existe, somos INVITADOS
+                    console.log("Entrando como invitado...");
+                    peer = new Peer(); // ID aleatorio para nosotros
+                    peer.on('open', () => {
+                        // Llamamos al host
+                        const call = peer.call('st-' + roomCode, localStream);
+                        call.on('stream', stream => renderVideo(stream, 'st-' + roomCode));
+                        
+                        // Conectamos chat al host
+                        const conn = peer.connect('st-' + roomCode);
+                        setupChat(conn);
+                    });
+                } else {
+                    console.error("Error de Peer:", err);
+                }
             });
         }
 
-        function addRemoteVideo(stream, peerId) {
-            if(document.getElementById(peerId)) return;
-            const container = document.createElement('div');
-            container.id = peerId;
-            container.className = "relative rounded-2xl overflow-hidden bg-slate-900 border border-blue-500/30 remote-video shadow-xl shadow-blue-500/5";
-            container.innerHTML = `<video autoplay playsinline class="w-full h-full object-cover"></video>
-                                   <div class="absolute bottom-4 left-4 bg-blue-600/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white">Invitado</div>`;
-            container.querySelector('video').srcObject = stream;
-            document.getElementById('video-grid').append(container);
+        function setupChat(conn) {
+            currentConn = conn;
+            conn.on('data', data => {
+                const bytes = CryptoJS.AES.decrypt(data, roomCode);
+                const descifrado = bytes.toString(CryptoJS.enc.Utf8);
+                if(descifrado) addMsg(descifrado, 'Invitado', 'text-emerald-400');
+            });
         }
 
-        // --- FUNCIONES DE CONTROL ---
-        function toggleMic() {
-            isMicOpen = !isMicOpen;
-            localStream.getAudioTracks()[0].enabled = isMicOpen;
-            document.getElementById('btnMic').querySelector('div').classList.toggle('bg-red-600', !isMicOpen);
+        function renderVideo(stream, id) {
+            if(document.getElementById(id)) return;
+            const div = document.createElement('div');
+            div.id = id;
+            div.className = "relative rounded-2xl overflow-hidden border border-blue-500/50 shadow-lg shadow-blue-500/10";
+            div.innerHTML = `<video autoplay playsinline></video><div class="absolute bottom-4 left-4 bg-blue-600/60 px-3 py-1 rounded-full text-[10px]">Remoto</div>`;
+            div.querySelector('video').srcObject = stream;
+            document.getElementById('video-grid').append(div);
         }
 
-        function toggleCam() {
-            isCamOpen = !isCamOpen;
-            localStream.getVideoTracks()[0].enabled = isCamOpen;
-            document.getElementById('btnCam').querySelector('div').classList.toggle('bg-red-600', !isCamOpen);
+        function sendMessage() {
+            const msg = document.getElementById('chatInput').value;
+            if(!msg || !currentConn) return;
+
+            const cifrado = CryptoJS.AES.encrypt(msg, roomCode).toString();
+            currentConn.send(cifrado);
+            addMsg(msg, 'Tú', 'text-blue-400');
+            document.getElementById('chatInput').value = '';
+        }
+
+        function addMsg(text, user, color) {
+            const messages = document.getElementById('messages');
+            const div = document.createElement('div');
+            div.className = "bg-slate-800/40 p-3 rounded-xl border border-slate-800";
+            div.innerHTML = `<span class="text-[10px] font-bold uppercase ${color}">${user}</span><p class="mt-1">${text}</p>`;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
         }
 
         function copyInvite() {
-            const url = window.location.origin + window.location.pathname + '?room=' + roomCode;
+            const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
             navigator.clipboard.writeText(url);
-            alert("¡Link de invitación copiado! Pásalo a tus compañeros.");
-        }
-
-        // --- CHAT CIFRADO ---
-        function sendMessage() {
-            const input = document.getElementById('chatInput');
-            if(!input.value) return;
-
-            const encrypted = CryptoJS.AES.encrypt(input.value, roomCode).toString();
-            
-            // Mostrar en mi pantalla
-            displayMessage(input.value, 'Tú', 'text-blue-400');
-            
-            // Enviar a los demás (en esta versión básica enviamos al peer conectado)
-            if(currentConn) currentConn.send(encrypted);
-            input.value = '';
-        }
-
-        function receiveMessage(data) {
-            const bytes = CryptoJS.AES.decrypt(data, roomCode);
-            const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-            displayMessage(decrypted, 'Invitado', 'text-emerald-400');
-        }
-
-        function displayMessage(text, sender, colorClass) {
-            const div = document.createElement('div');
-            div.className = "bg-slate-800/50 p-3 rounded-xl border border-slate-700/50";
-            div.innerHTML = `<span class="font-bold text-[10px] uppercase ${colorClass}">${sender}</span><p class="mt-1">${text}</p>`;
-            const container = document.getElementById('messages');
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-        }
-
-        async function shareScreen() {
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({video: true});
-            document.getElementById('localVideo').srcObject = screenStream;
-            // Aquí se debería añadir lógica para reemplazar el track en las llamadas activas
+            alert("Enlace de invitación copiado. Pásalo a tu contacto.");
         }
     </script>
 </body>
