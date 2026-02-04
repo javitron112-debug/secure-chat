@@ -3,134 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftCall | P2P Manual</title>
+    <title>SwiftCall | P2P Total</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .video-bg { background: #0f172a; height: 100dvh; width: 100vw; }
-        video { object-fit: cover; width: 100%; height: 100%; }
+        .video-bg { background: #0f172a; height: 100dvh; width: 100vw; position: relative; }
+        #remote-video { width: 100%; height: 100%; object-fit: cover; background: #0f172a; }
         #local-video { 
-            width: 120px; height: 180px; position: absolute; 
+            width: 110px; height: 160px; position: absolute; 
             top: 20px; right: 20px; border-radius: 1rem; 
-            border: 2px solid rgba(255,255,255,0.2); z-index: 10;
+            border: 2px solid rgba(255,255,255,0.3); z-index: 20; object-fit: cover;
         }
+        #chat-box::-webkit-scrollbar { width: 4px; }
+        #chat-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
     </style>
 </head>
 <body class="bg-slate-950 text-white font-sans overflow-hidden">
 
-    <div id="setup-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/95 backdrop-blur-md">
-        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-700">
+    <div id="setup-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900">
+        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-700 mx-4">
             <h1 class="text-3xl font-bold text-center mb-2">SwiftCall</h1>
-            <p class="text-slate-400 text-center mb-8 text-sm">Sin servidores. Sin registros. P2P Puro.</p>
+            <p class="text-slate-400 text-center mb-8 text-xs uppercase tracking-widest">WebRTC Manual P2P</p>
             
             <div class="space-y-6">
                 <div>
-                    <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Tu ID para recibir llamadas:</label>
+                    <label class="block text-[10px] font-bold uppercase text-slate-500 mb-2 italic">1. Copia tu ID y envíalo:</label>
                     <div class="flex gap-2">
-                        <input type="text" id="my-id" readonly class="w-full bg-slate-900 p-3 rounded-xl text-blue-400 font-mono text-sm border border-slate-700">
+                        <input type="text" id="my-id" readonly class="w-full bg-slate-900 p-3 rounded-xl text-blue-400 font-mono text-sm border border-slate-700 outline-none">
                         <button onclick="copyID()" class="bg-slate-700 px-4 rounded-xl hover:bg-slate-600 transition"><i class="fas fa-copy"></i></button>
                     </div>
                 </div>
 
-                <div class="relative">
+                <div class="relative py-2">
                     <div class="absolute inset-0 flex items-center"><span class="w-full border-t border-slate-700"></span></div>
-                    <div class="relative flex justify-center text-xs uppercase"><span class="bg-slate-800 px-2 text-slate-500 font-bold">Llamar a alguien</span></div>
+                    <div class="relative flex justify-center text-[10px] uppercase"><span class="bg-slate-800 px-2 text-slate-500 font-bold">O LLAMA A TU AMIGO</span></div>
                 </div>
 
                 <div>
-                    <input type="text" id="peer-id-input" placeholder="Pega el ID de tu amigo aquí..." class="w-full bg-slate-900 p-4 rounded-xl text-white border border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <label class="block text-[10px] font-bold uppercase text-slate-500 mb-2 italic">2. Pega el ID de tu amigo:</label>
+                    <input type="text" id="peer-id-input" placeholder="ID del destinatario..." class="w-full bg-slate-900 p-4 rounded-xl text-white border border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
 
-                <button id="call-btn" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-900/20 transition-all transform active:scale-95">
-                    Iniciar Videollamada
+                <button id="call-btn" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-bold text-lg transition-all shadow-lg shadow-blue-900/40">
+                    Conectar Ahora
                 </button>
             </div>
         </div>
     </div>
 
-    <main class="video-bg relative">
-        <video id="remote-video" autoplay playsinline class="bg-slate-900"></video>
+    <main class="video-bg">
+        <video id="remote-video" autoplay playsinline></video>
         <video id="local-video" autoplay playsinline muted></video>
 
-        <div class="fixed bottom-10 left-1/2 -translate-x-1/2 flex gap-4 bg-slate-900/80 p-5 rounded-full backdrop-blur-xl border border-white/10 shadow-2xl">
-            <button onclick="toggleMic()" id="mic-btn" class="w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 transition"><i class="fas fa-microphone"></i></button>
-            <button onclick="toggleVideo()" id="video-btn" class="w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 transition"><i class="fas fa-video"></i></button>
-            <button onclick="shareScreen()" class="w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 transition"><i class="fas fa-desktop"></i></button>
-            <button onclick="location.reload()" class="w-14 h-14 rounded-full bg-red-500 hover:bg-red-400 transition text-white"><i class="fas fa-phone-slash"></i></button>
+        <div id="chat-ui" class="absolute left-6 bottom-32 w-72 max-h-64 flex flex-col z-30 hidden">
+            <div id="chat-box" class="flex-1 overflow-y-auto space-y-2 mb-3 pr-2"></div>
+            <div class="flex gap-2">
+                <input type="text" id="chat-input" placeholder="Escribe..." class="bg-slate-900/90 backdrop-blur border border-white/10 p-2 rounded-xl flex-1 text-sm outline-none">
+                <button onclick="sendMessage()" class="bg-blue-600 w-10 h-10 rounded-xl"><i class="fas fa-paper-plane text-xs"></i></button>
+            </div>
+        </div>
+
+        <div class="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-slate-900/90 p-4 rounded-[2.5rem] backdrop-blur-2xl border border-white/10 shadow-2xl z-40">
+            <button onclick="toggleMic()" id="mic-btn" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 transition"><i class="fas fa-microphone"></i></button>
+            <button onclick="toggleVideo()" id="video-btn" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 transition"><i class="fas fa-video"></i></button>
+            <button onclick="toggleChat()" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 transition"><i class="fas fa-comment"></i></button>
+            <button onclick="location.reload()" class="w-12 h-12 rounded-full bg-red-500 hover:bg-red-600 transition"><i class="fas fa-phone-slash"></i></button>
         </div>
     </main>
 
     <script>
-        let peer = new Peer(); 
+        const iceConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+            ]
+        };
+
+        const peer = new Peer(undefined, { config: iceConfig });
         let localStream;
+        let dataConn;
 
-        // Al abrir, generar ID y pedir cámara
-        peer.on('open', id => {
-            document.getElementById('my-id').value = id;
-            startLocalVideo();
+        peer.on('open', id => document.getElementById('my-id').value = id);
+
+        // Iniciar cámara al cargar
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+            localStream = stream;
+            document.getElementById('local-video').srcObject = stream;
         });
 
-        async function startLocalVideo() {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                document.getElementById('local-video').srcObject = localStream;
-            } catch (err) {
-                console.error("No se pudo acceder a la cámara", err);
-                alert("Necesitas cámara y micro para funcionar.");
-            }
-        }
-
-        // ESCUCHAR LLAMADA ENTRANTE
+        // RECIBIR CONEXIÓN (Invitado)
         peer.on('call', call => {
-            document.getElementById('setup-screen').classList.add('hidden');
             call.answer(localStream);
-            call.on('stream', remoteStream => {
-                document.getElementById('remote-video').srcObject = remoteStream;
-            });
+            handleVideo(call);
+            document.getElementById('setup-screen').classList.add('hidden');
         });
 
-        // REALIZAR LLAMADA
+        peer.on('connection', conn => {
+            dataConn = conn;
+            setupChat();
+        });
+
+        // INICIAR CONEXIÓN (Anfitrión)
         document.getElementById('call-btn').addEventListener('click', () => {
             const peerId = document.getElementById('peer-id-input').value;
-            if (!peerId) return alert("Pega un ID válido");
+            if(!peerId) return alert("Pega el ID");
 
             const call = peer.call(peerId, localStream);
+            handleVideo(call);
+
+            dataConn = peer.connect(peerId);
+            setupChat();
+
             document.getElementById('setup-screen').classList.add('hidden');
-            
+        });
+
+        function handleVideo(call) {
             call.on('stream', remoteStream => {
                 document.getElementById('remote-video').srcObject = remoteStream;
             });
-        });
-
-        // UTILIDADES
-        function copyID() {
-            const idInput = document.getElementById('my-id');
-            idInput.select();
-            document.execCommand('copy');
-            alert("ID Copiado. Envíalo a tu amigo.");
         }
 
-        function toggleMic() {
-            const audioTrack = localStream.getAudioTracks()[0];
-            audioTrack.enabled = !audioTrack.enabled;
+        function setupChat() {
+            document.getElementById('chat-ui').classList.remove('hidden');
+            dataConn.on('data', data => {
+                if(data.type === 'msg') renderMsg('Amigo', data.text, 'bg-slate-800 text-white');
+            });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            if(!input.value || !dataConn) return;
+            dataConn.send({ type: 'msg', text: input.value });
+            renderMsg('Tú', input.value, 'bg-blue-600 text-white ml-auto');
+            input.value = '';
+        }
+
+        function renderMsg(user, text, style) {
+            const box = document.getElementById('chat-box');
+            const msg = `<div class="max-w-[80%] p-2 rounded-2xl text-xs shadow-sm ${style}">
+                            <p class="font-bold text-[10px] opacity-50">${user}</p>
+                            <p>${text}</p>
+                         </div>`;
+            box.innerHTML += msg;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // Utilidades
+        function copyID() {
+            const el = document.getElementById('my-id');
+            el.select();
+            document.execCommand('copy');
+            alert("ID Copiado. Pásalo por WhatsApp.");
+        }
+
+        function toggleChat() { document.getElementById('chat-ui').classList.toggle('hidden'); }
+        function toggleMic() { 
+            localStream.getAudioTracks()[0].enabled = !localStream.getAudioTracks()[0].enabled;
             document.getElementById('mic-btn').classList.toggle('bg-red-500');
         }
-
-        function toggleVideo() {
-            const videoTrack = localStream.getVideoTracks()[0];
-            videoTrack.enabled = !videoTrack.enabled;
+        function toggleVideo() { 
+            localStream.getVideoTracks()[0].enabled = !localStream.getVideoTracks()[0].enabled;
             document.getElementById('video-btn').classList.toggle('bg-red-500');
-        }
-
-        async function shareScreen() {
-            try {
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                // Aquí se debería actualizar el sender del WebRTC (v2)
-                alert("Compartir pantalla activado (Maqueta)");
-            } catch (err) {
-                console.error(err);
-            }
         }
     </script>
 </body>
