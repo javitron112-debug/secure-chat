@@ -1,194 +1,218 @@
-<!DOCTYPE html>
+
+html_content = '''<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftCall | P2P Full Stack</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>WebRTC Meet - Videollamadas sin registro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .video-bg { background: #000; height: 100dvh; width: 100vw; position: relative; }
-        video { object-fit: cover; width: 100%; height: 100%; transition: opacity 0.5s; }
-        #local-video { 
-            width: 110px; height: 160px; position: absolute; 
-            top: 20px; right: 20px; border-radius: 1rem; 
-            border: 2px solid rgba(255,255,255,0.3); z-index: 50;
-        }
-        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-    </style>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📹</text></svg>">
 </head>
-<body class="bg-black text-white overflow-hidden font-sans">
+<body class="bg-slate-900 text-white min-h-screen flex flex-col">
+    
+    <!-- Navbar -->
+    <nav class="w-full p-4 flex justify-between items-center bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+            <div class="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/25">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <span class="font-bold text-xl tracking-tight">Meet</span>
+        </div>
+        <button id="installBtn" class="hidden md:block px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            Instalar app
+        </button>
+    </nav>
 
-    <div id="setup-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950 p-4">
-        <div class="glass p-8 rounded-3xl shadow-2xl w-full max-w-md">
-            <h1 class="text-3xl font-bold text-center mb-2 text-blue-500">SwiftCall</h1>
-            <p class="text-slate-400 text-center text-xs mb-8 uppercase tracking-tighter">Conexión Directa sin Servidores</p>
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        
+        <!-- Background decoration -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute top-20 left-10 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl animate-pulse"></div>
+            <div class="absolute bottom-20 right-10 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+
+        <!-- Hero -->
+        <div class="text-center max-w-md w-full z-10 space-y-8">
             
             <div class="space-y-4">
-                <div class="bg-black/50 p-4 rounded-2xl border border-white/5">
-                    <p class="text-[10px] text-slate-500 font-bold mb-1 uppercase">Tu Identificador:</p>
-                    <div class="flex items-center gap-3">
-                        <input type="text" id="my-id" readonly class="bg-transparent w-full text-blue-400 font-mono text-sm outline-none" value="Generando...">
-                        <button onclick="copyID()" class="hover:text-blue-400 transition"><i class="fas fa-copy"></i></button>
+                <h1 class="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent leading-tight">
+                    Videollamadas sin complicaciones
+                </h1>
+                <p class="text-slate-400 text-lg md:text-xl">
+                    Sin registro. Sin descargas. Solo comparte el enlace y habla.
+                </p>
+            </div>
+
+            <!-- Create Room Button -->
+            <div class="space-y-4">
+                <button onclick="createRoom()" class="group relative w-full py-4 px-8 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl font-bold text-lg shadow-xl shadow-cyan-500/25 hover:shadow-cyan-500/40 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 overflow-hidden">
+                    <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                    <span class="relative flex items-center justify-center gap-3">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        Crear sala instantánea
+                    </span>
+                </button>
+                
+                <div id="generatedRoom" class="hidden animate-fade-in">
+                    <div class="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-4 space-y-3">
+                        <p class="text-sm text-slate-400 uppercase tracking-wider font-semibold">Tu sala está lista</p>
+                        <div class="flex items-center gap-2 bg-slate-900 rounded-lg p-3 border border-slate-700">
+                            <code id="roomCode" class="flex-1 text-cyan-400 font-mono text-lg">happy-dog-42</code>
+                            <button onclick="copyCode()" class="p-2 hover:bg-slate-800 rounded-lg transition-colors" title="Copiar">
+                                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button onclick="enterRoom()" class="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold transition-colors">
+                            Entrar ahora →
+                        </button>
                     </div>
                 </div>
+            </div>
 
-                <input type="text" id="peer-id-input" placeholder="ID del destinatario..." class="w-full bg-black/50 p-4 rounded-2xl border border-white/10 outline-none focus:border-blue-500 transition">
-                
-                <button id="call-btn" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-900/20 active:scale-95 transition-all">
-                    Establecer Conexión
+            <!-- Divider -->
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-slate-800"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-4 bg-slate-900 text-slate-500">o únete a una</span>
+                </div>
+            </div>
+
+            <!-- Join Room -->
+            <div class="flex flex-col sm:flex-row gap-3">
+                <div class="flex-1 relative">
+                    <input type="text" id="joinInput" placeholder="código-sala-123" 
+                        class="w-full px-4 py-4 bg-slate-800/50 border border-slate-700 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-center text-lg placeholder-slate-500 transition-all uppercase tracking-wide">
+                    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <button onclick="joinRoom()" class="px-8 py-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl font-semibold transition-colors whitespace-nowrap">
+                    Unirse
                 </button>
-                <div id="status-log" class="text-center text-[10px] text-slate-500 font-mono italic">Iniciando cámara...</div>
+            </div>
+
+        </div>
+
+        <!-- Features -->
+        <div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl w-full z-10">
+            <div class="feature-card">
+                <div class="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center mb-3">
+                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+                <h3 class="font-semibold text-sm">Cifrado E2E</h3>
+                <p class="text-xs text-slate-500 mt-1">Privacidad total</p>
+            </div>
+            <div class="feature-card">
+                <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-3">
+                    <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                </div>
+                <h3 class="font-semibold text-sm">Chat integrado</h3>
+                <p class="text-xs text-slate-500 mt-1">Mensajes y archivos</p>
+            </div>
+            <div class="feature-card">
+                <div class="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center mb-3">
+                    <svg class="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <h3 class="font-semibold text-sm">Compartir</h3>
+                <p class="text-xs text-slate-500 mt-1">Pantalla y archivos</p>
+            </div>
+            <div class="feature-card">
+                <div class="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center mb-3">
+                    <svg class="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <h3 class="font-semibold text-sm">Mobile First</h3>
+                <p class="text-xs text-slate-500 mt-1">Funciona en todos lados</p>
             </div>
         </div>
-    </div>
 
-    <main class="video-bg">
-        <video id="remote-video" autoplay playsinline></video>
-        <video id="local-video" autoplay playsinline muted></video>
-
-        <div id="chat-ui" class="absolute left-6 bottom-32 w-72 max-h-[40vh] flex flex-col z-30 opacity-0 pointer-events-none transition-opacity duration-500">
-            <div id="chat-box" class="flex-1 overflow-y-auto space-y-2 mb-4 p-2 scrollbar-hide text-sm"></div>
-            <div class="flex gap-2">
-                <input type="text" id="chat-input" placeholder="Escribe algo..." class="glass p-3 rounded-2xl flex-1 text-sm outline-none">
-                <button onclick="sendMessage()" class="bg-blue-600 w-11 h-11 rounded-2xl"><i class="fas fa-paper-plane"></i></button>
-                <label class="bg-slate-700 w-11 h-11 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-slate-600">
-                    <input type="file" id="file-input" class="hidden" onchange="sendFile(this)">
-                    <i class="fas fa-paperclip"></i>
-                </label>
-            </div>
-        </div>
-
-        <div class="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 glass p-4 rounded-[2.5rem] z-40 shadow-2xl">
-            <button id="mic-btn" onclick="toggleMic()" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700"><i class="fas fa-microphone"></i></button>
-            <button id="video-btn" onclick="toggleVideo()" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700"><i class="fas fa-video"></i></button>
-            <button onclick="toggleChat()" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700"><i class="fas fa-comment"></i></button>
-            <button onclick="location.reload()" class="w-12 h-12 rounded-full bg-red-500 hover:bg-red-400"><i class="fas fa-phone-slash"></i></button>
-        </div>
     </main>
 
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl border border-slate-700 opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+        Código copiado al portapapeles
+    </div>
+
     <script>
-        const log = (msg) => { document.getElementById('status-log').innerText = msg; console.log(msg); };
-        const peer = new Peer(undefined, {
-            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
-        });
+        // Generador de códigos tipo "happy-dog-42"
+        const adjectives = ['happy', 'quick', 'bright', 'cool', 'sunny', 'brave', 'calm', 'eager', 'fancy', 'gentle'];
+        const nouns = ['dog', 'cat', 'bird', 'fish', 'wolf', 'bear', 'lion', 'tiger', 'eagle', 'shark'];
+        
+        let currentRoom = '';
 
-        let localStream, activeConn;
-
-        // 1. Setup inicial
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-            localStream = stream;
-            document.getElementById('local-video').srcObject = stream;
-            log("Cámara activa. Listo para conectar.");
-        }).catch(e => log("Error: Activa la cámara"));
-
-        peer.on('open', id => document.getElementById('my-id').value = id);
-
-        // 2. Recibir llamada y datos
-        peer.on('call', call => {
-            call.answer(localStream);
-            setupVideoFeed(call);
-            document.getElementById('setup-screen').classList.add('hidden');
-        });
-
-        peer.on('connection', conn => {
-            activeConn = conn;
-            bindDataEvents();
-        });
-
-        // 3. Iniciar llamada
-        document.getElementById('call-btn').addEventListener('click', () => {
-            const peerId = document.getElementById('peer-id-input').value.trim();
-            if(!peerId) return alert("Pega un ID válido");
+        function createRoom() {
+            const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+            const noun = nouns[Math.floor(Math.random() * nouns.length)];
+            const num = Math.floor(Math.random() * 99) + 1;
+            currentRoom = `${adj}-${noun}-${num}`;
             
-            const call = peer.call(peerId, localStream);
-            setupVideoFeed(call);
-            
-            activeConn = peer.connect(peerId);
-            bindDataEvents();
-            
-            document.getElementById('setup-screen').classList.add('hidden');
-        });
+            document.getElementById('roomCode').textContent = currentRoom;
+            document.getElementById('generatedRoom').classList.remove('hidden');
+        }
 
-        function setupVideoFeed(call) {
-            call.on('stream', remoteStream => {
-                const rv = document.getElementById('remote-video');
-                rv.srcObject = remoteStream;
-                rv.onloadedmetadata = () => rv.play();
+        function copyCode() {
+            navigator.clipboard.writeText(currentRoom).then(() => {
+                const toast = document.getElementById('toast');
+                toast.classList.remove('opacity-0');
+                setTimeout(() => toast.classList.add('opacity-0'), 2000);
             });
         }
 
-        function bindDataEvents() {
-            activeConn.on('open', () => {
-                log("¡Conexión de datos abierta!");
-                document.getElementById('chat-ui').style.opacity = "1";
-                document.getElementById('chat-ui').style.pointerEvents = "auto";
-            });
-
-            activeConn.on('data', data => {
-                if(data.type === 'chat') renderMsg('Amigo', data.text, 'bg-slate-800');
-                if(data.type === 'file') downloadFile(data);
-            });
+        function enterRoom() {
+            if (currentRoom) {
+                window.location.href = `room.html?room=${currentRoom}`;
+            }
         }
 
-        // CHAT Y ARCHIVOS
-        function sendMessage() {
-            const input = document.getElementById('chat-input');
-            if(!input.value || !activeConn.open) return;
-            activeConn.send({ type: 'chat', text: input.value });
-            renderMsg('Tú', input.value, 'bg-blue-600 ml-auto');
-            input.value = '';
+        function joinRoom() {
+            const code = document.getElementById('joinInput').value.trim().toLowerCase();
+            if (code) {
+                window.location.href = `room.html?room=${code}`;
+            }
         }
 
-        function sendFile(input) {
-            const file = input.files[0];
-            if(!file || !activeConn.open) return;
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                activeConn.send({
-                    type: 'file',
-                    fileData: e.target.result,
-                    fileName: file.name,
-                    fileType: file.type
-                });
-                renderMsg('Tú', `📎 Enviado: ${file.name}`, 'bg-blue-900 ml-auto');
-            };
-            reader.readAsArrayBuffer(file);
-        }
+        // Enter key en input
+        document.getElementById('joinInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinRoom();
+        });
 
-        function downloadFile(data) {
-            const blob = new Blob([data.fileData], { type: data.fileType });
-            const url = URL.createObjectURL(blob);
-            renderMsg('Amigo', `📎 Archivo recibido: <a href="${url}" download="${data.fileName}" class="underline text-blue-400">${data.fileName}</a>`, 'bg-slate-800');
-        }
-
-        function renderMsg(user, text, style) {
-            const box = document.getElementById('chat-box');
-            box.innerHTML += `<div class="p-3 rounded-2xl max-w-[85%] ${style} mb-2"><b>${user}:</b><br>${text}</div>`;
-            box.scrollTop = box.scrollHeight;
-        }
-
-        // UTILIDADES
-        function toggleChat() { 
-            const ui = document.getElementById('chat-ui');
-            ui.style.opacity = ui.style.opacity === "0" ? "1" : "0";
-        }
-        function toggleMic() { 
-            localStream.getAudioTracks()[0].enabled = !localStream.getAudioTracks()[0].enabled;
-            document.getElementById('mic-btn').classList.toggle('bg-red-500');
-        }
-        function toggleVideo() { 
-            localStream.getVideoTracks()[0].enabled = !localStream.getVideoTracks()[0].enabled;
-            document.getElementById('video-btn').classList.toggle('bg-red-500');
-        }
-        function copyID() {
-            const el = document.getElementById('my-id');
-            el.select();
-            document.execCommand('copy');
-            alert("ID Copiado");
-        }
+        // PWA Install (placeholder)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBtn').classList.remove('hidden');
+        });
     </script>
 </body>
-</html>
+</html>'''
+
+# Guardar archivo
+with open('/mnt/kimi/output/index.html', 'w', encoding='utf-8') as f:
+    f.write(html_content)
+
+print("✅ index.html creado")
+print(f"Tamaño: {len(html_content)} caracteres")
