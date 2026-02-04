@@ -3,158 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftCall Fix | P2P Direct</title>
+    <title>SwiftCall | P2P Full Stack</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .video-bg { background: #000; height: 100dvh; width: 100vw; position: relative; }
-        video { object-fit: cover; width: 100%; height: 100%; }
+        video { object-fit: cover; width: 100%; height: 100%; transition: opacity 0.5s; }
         #local-video { 
-            width: 100px; height: 150px; position: absolute; 
+            width: 110px; height: 160px; position: absolute; 
             top: 20px; right: 20px; border-radius: 1rem; 
             border: 2px solid rgba(255,255,255,0.3); z-index: 50;
         }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
     </style>
 </head>
-<body class="bg-black text-white overflow-hidden">
+<body class="bg-black text-white overflow-hidden font-sans">
 
-    <div id="setup-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900 p-4">
-        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-700">
-            <h1 class="text-3xl font-bold text-center mb-6">SwiftCall</h1>
+    <div id="setup-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950 p-4">
+        <div class="glass p-8 rounded-3xl shadow-2xl w-full max-w-md">
+            <h1 class="text-3xl font-bold text-center mb-2 text-blue-500">SwiftCall</h1>
+            <p class="text-slate-400 text-center text-xs mb-8 uppercase tracking-tighter">Conexión Directa sin Servidores</p>
+            
             <div class="space-y-4">
-                <div class="bg-slate-950 p-4 rounded-xl border border-slate-700">
-                    <p class="text-[10px] uppercase text-slate-500 font-bold mb-1">Tu ID:</p>
-                    <div class="flex items-center gap-2">
-                        <input type="text" id="my-id" readonly class="bg-transparent w-full text-blue-400 font-mono text-sm outline-none">
-                        <button onclick="copyID()" class="text-slate-400"><i class="fas fa-copy"></i></button>
+                <div class="bg-black/50 p-4 rounded-2xl border border-white/5">
+                    <p class="text-[10px] text-slate-500 font-bold mb-1 uppercase">Tu Identificador:</p>
+                    <div class="flex items-center gap-3">
+                        <input type="text" id="my-id" readonly class="bg-transparent w-full text-blue-400 font-mono text-sm outline-none" value="Generando...">
+                        <button onclick="copyID()" class="hover:text-blue-400 transition"><i class="fas fa-copy"></i></button>
                     </div>
                 </div>
-                <input type="text" id="peer-id-input" placeholder="ID de tu amigo..." class="w-full bg-slate-950 p-4 rounded-xl border border-slate-700 outline-none focus:ring-2 focus:ring-blue-500">
-                <button id="call-btn" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-bold text-lg">Conectar</button>
-                <div id="status-log" class="text-[10px] text-center text-slate-500 font-mono mt-2">Iniciando sistema...</div>
+
+                <input type="text" id="peer-id-input" placeholder="ID del destinatario..." class="w-full bg-black/50 p-4 rounded-2xl border border-white/10 outline-none focus:border-blue-500 transition">
+                
+                <button id="call-btn" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-900/20 active:scale-95 transition-all">
+                    Establecer Conexión
+                </button>
+                <div id="status-log" class="text-center text-[10px] text-slate-500 font-mono italic">Iniciando cámara...</div>
             </div>
         </div>
     </div>
 
     <main class="video-bg">
-        <video id="remote-video" autoplay playsinline class="bg-black"></video>
+        <video id="remote-video" autoplay playsinline></video>
         <video id="local-video" autoplay playsinline muted></video>
 
-        <div id="chat-ui" class="absolute left-6 bottom-32 w-72 max-h-64 flex flex-col z-30 hidden">
-            <div id="chat-box" class="flex-1 overflow-y-auto space-y-2 mb-3 bg-black/20 p-2 rounded-lg"></div>
+        <div id="chat-ui" class="absolute left-6 bottom-32 w-72 max-h-[40vh] flex flex-col z-30 opacity-0 pointer-events-none transition-opacity duration-500">
+            <div id="chat-box" class="flex-1 overflow-y-auto space-y-2 mb-4 p-2 scrollbar-hide text-sm"></div>
             <div class="flex gap-2">
-                <input type="text" id="chat-input" placeholder="Escribe..." class="bg-slate-900/90 border border-white/10 p-3 rounded-xl flex-1 text-sm outline-none shadow-2xl">
-                <button onclick="sendMessage()" class="bg-blue-600 w-12 h-12 rounded-xl shadow-lg"><i class="fas fa-paper-plane"></i></button>
+                <input type="text" id="chat-input" placeholder="Escribe algo..." class="glass p-3 rounded-2xl flex-1 text-sm outline-none">
+                <button onclick="sendMessage()" class="bg-blue-600 w-11 h-11 rounded-2xl"><i class="fas fa-paper-plane"></i></button>
+                <label class="bg-slate-700 w-11 h-11 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-slate-600">
+                    <input type="file" id="file-input" class="hidden" onchange="sendFile(this)">
+                    <i class="fas fa-paperclip"></i>
+                </label>
             </div>
         </div>
 
-        <div class="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-slate-900/80 p-4 rounded-[2.5rem] backdrop-blur-2xl border border-white/10 z-40 shadow-2xl">
-            <button id="mic-btn" onclick="toggleMic()" class="w-12 h-12 rounded-full bg-slate-800"><i class="fas fa-microphone"></i></button>
-            <button id="video-btn" onclick="toggleVideo()" class="w-12 h-12 rounded-full bg-slate-800"><i class="fas fa-video"></i></button>
-            <button onclick="toggleChat()" class="w-12 h-12 rounded-full bg-slate-800"><i class="fas fa-comment"></i></button>
-            <button onclick="location.reload()" class="w-12 h-12 rounded-full bg-red-500 shadow-lg shadow-red-900/40"><i class="fas fa-phone-slash"></i></button>
+        <div class="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 glass p-4 rounded-[2.5rem] z-40 shadow-2xl">
+            <button id="mic-btn" onclick="toggleMic()" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700"><i class="fas fa-microphone"></i></button>
+            <button id="video-btn" onclick="toggleVideo()" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700"><i class="fas fa-video"></i></button>
+            <button onclick="toggleChat()" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700"><i class="fas fa-comment"></i></button>
+            <button onclick="location.reload()" class="w-12 h-12 rounded-full bg-red-500 hover:bg-red-400"><i class="fas fa-phone-slash"></i></button>
         </div>
     </main>
 
     <script>
-        const statusLog = document.getElementById('status-log');
-        const log = (msg) => { statusLog.innerText = msg; console.log(msg); };
-
+        const log = (msg) => { document.getElementById('status-log').innerText = msg; console.log(msg); };
         const peer = new Peer(undefined, {
-            config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] },
-            debug: 3
+            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
         });
 
-        let localStream;
-        let activeConn;
+        let localStream, activeConn;
 
-        // 1. Obtener cámara primero
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then(stream => {
-                localStream = stream;
-                document.getElementById('local-video').srcObject = stream;
-                log("Cámara lista. Esperando ID...");
-            })
-            .catch(e => log("Error de cámara: " + e.message));
+        // 1. Setup inicial
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+            localStream = stream;
+            document.getElementById('local-video').srcObject = stream;
+            log("Cámara activa. Listo para conectar.");
+        }).catch(e => log("Error: Activa la cámara"));
 
-        peer.on('open', id => {
-            document.getElementById('my-id').value = id;
-            log("ID generado con éxito.");
-        });
+        peer.on('open', id => document.getElementById('my-id').value = id);
 
-        // 2. RECIBIR LLAMADA (VIDEO + DATOS)
+        // 2. Recibir llamada y datos
         peer.on('call', call => {
-            log("Recibiendo llamada...");
             call.answer(localStream);
-            setupVideo(call);
+            setupVideoFeed(call);
             document.getElementById('setup-screen').classList.add('hidden');
         });
 
         peer.on('connection', conn => {
-            log("Canal de datos conectado.");
             activeConn = conn;
-            setupChat();
+            bindDataEvents();
         });
 
-        // 3. INICIAR LLAMADA
+        // 3. Iniciar llamada
         document.getElementById('call-btn').addEventListener('click', () => {
             const peerId = document.getElementById('peer-id-input').value.trim();
-            if (!peerId) return alert("Pega un ID");
-
-            log("Conectando con " + peerId + "...");
+            if(!peerId) return alert("Pega un ID válido");
             
-            // Iniciar Video
             const call = peer.call(peerId, localStream);
-            setupVideo(call);
-
-            // Iniciar Datos
+            setupVideoFeed(call);
+            
             activeConn = peer.connect(peerId);
-            setupChat();
-
+            bindDataEvents();
+            
             document.getElementById('setup-screen').classList.add('hidden');
         });
 
-        function setupVideo(call) {
+        function setupVideoFeed(call) {
             call.on('stream', remoteStream => {
-                log("Recibiendo flujo de vídeo...");
                 const rv = document.getElementById('remote-video');
                 rv.srcObject = remoteStream;
                 rv.onloadedmetadata = () => rv.play();
             });
-            call.on('error', e => log("Error en vídeo: " + e));
         }
 
-        function setupChat() {
-            document.getElementById('chat-ui').classList.remove('hidden');
-            activeConn.on('open', () => log("Chat listo para enviar."));
+        function bindDataEvents() {
+            activeConn.on('open', () => {
+                log("¡Conexión de datos abierta!");
+                document.getElementById('chat-ui').style.opacity = "1";
+                document.getElementById('chat-ui').style.pointerEvents = "auto";
+            });
+
             activeConn.on('data', data => {
-                if (data.type === 'chat') renderMsg('Amigo', data.text, 'bg-slate-800');
+                if(data.type === 'chat') renderMsg('Amigo', data.text, 'bg-slate-800');
+                if(data.type === 'file') downloadFile(data);
             });
         }
 
+        // CHAT Y ARCHIVOS
         function sendMessage() {
             const input = document.getElementById('chat-input');
-            if (!input.value || !activeConn) return;
+            if(!input.value || !activeConn.open) return;
             activeConn.send({ type: 'chat', text: input.value });
             renderMsg('Tú', input.value, 'bg-blue-600 ml-auto');
             input.value = '';
         }
 
+        function sendFile(input) {
+            const file = input.files[0];
+            if(!file || !activeConn.open) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                activeConn.send({
+                    type: 'file',
+                    fileData: e.target.result,
+                    fileName: file.name,
+                    fileType: file.type
+                });
+                renderMsg('Tú', `📎 Enviado: ${file.name}`, 'bg-blue-900 ml-auto');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function downloadFile(data) {
+            const blob = new Blob([data.fileData], { type: data.fileType });
+            const url = URL.createObjectURL(blob);
+            renderMsg('Amigo', `📎 Archivo recibido: <a href="${url}" download="${data.fileName}" class="underline text-blue-400">${data.fileName}</a>`, 'bg-slate-800');
+        }
+
         function renderMsg(user, text, style) {
             const box = document.getElementById('chat-box');
-            box.innerHTML += `<div class="p-3 rounded-2xl text-xs w-fit max-w-[85%] ${style} shadow-md mb-2"><b>${user}:</b><br>${text}</div>`;
+            box.innerHTML += `<div class="p-3 rounded-2xl max-w-[85%] ${style} mb-2"><b>${user}:</b><br>${text}</div>`;
             box.scrollTop = box.scrollHeight;
         }
 
-        function copyID() {
-            const el = document.getElementById('my-id');
-            el.select();
-            document.execCommand('copy');
-            log("ID copiado al portapapeles.");
+        // UTILIDADES
+        function toggleChat() { 
+            const ui = document.getElementById('chat-ui');
+            ui.style.opacity = ui.style.opacity === "0" ? "1" : "0";
         }
-
-        function toggleChat() { document.getElementById('chat-ui').classList.toggle('hidden'); }
         function toggleMic() { 
             localStream.getAudioTracks()[0].enabled = !localStream.getAudioTracks()[0].enabled;
             document.getElementById('mic-btn').classList.toggle('bg-red-500');
@@ -162,6 +182,12 @@
         function toggleVideo() { 
             localStream.getVideoTracks()[0].enabled = !localStream.getVideoTracks()[0].enabled;
             document.getElementById('video-btn').classList.toggle('bg-red-500');
+        }
+        function copyID() {
+            const el = document.getElementById('my-id');
+            el.select();
+            document.execCommand('copy');
+            alert("ID Copiado");
         }
     </script>
 </body>
