@@ -299,8 +299,12 @@
             </div>
 
             <div id="createMode">
-                <button class="btn btn-primary" onclick="createConnection()">Crear nueva sala</button>
-                <button class="btn btn-secondary" onclick="switchToJoin()">Unirse a sala existente</button>
+                <button class="btn btn-primary" onclick="createConnection()">🔑 Crear nueva sala</button>
+                <button class="btn btn-secondary" onclick="switchToJoin()">🔗 Unirse a sala existente</button>
+                <div id="loadingIndicator" style="display: none; margin-top: 15px; text-align: center; color: #667eea;">
+                    <div>⏳ Generando código seguro...</div>
+                    <div style="font-size: 12px; margin-top: 5px;">Esto puede tardar unos segundos</div>
+                </div>
             </div>
 
             <div id="offerMode" style="display: none;">
@@ -356,10 +360,41 @@
             { urls: 'stun:stun2.l.google.com:19302' }
         ];
 
+        // Función para esperar a que se completen los candidatos ICE
+        function waitForIceCandidates(pc) {
+            return new Promise((resolve) => {
+                if (pc.iceGatheringState === 'complete') {
+                    resolve();
+                    return;
+                }
+
+                const timeout = setTimeout(() => {
+                    pc.removeEventListener('icegatheringstatechange', checkState);
+                    resolve();
+                }, 5000); // Timeout de 5 segundos
+
+                function checkState() {
+                    if (pc.iceGatheringState === 'complete') {
+                        clearTimeout(timeout);
+                        pc.removeEventListener('icegatheringstatechange', checkState);
+                        resolve();
+                    }
+                }
+
+                pc.addEventListener('icegatheringstatechange', checkState);
+            });
+        }
+
         // Crear una nueva conexión (HOST)
         async function createConnection() {
             try {
+                // Mostrar indicador de carga
+                document.getElementById('loadingIndicator').style.display = 'block';
+                
                 peerConnection = new RTCPeerConnection({ iceServers });
+                
+                // Monitorear conexión
+                monitorConnection(peerConnection);
                 
                 // Crear canal de datos
                 dataChannel = peerConnection.createDataChannel('chat', {
@@ -368,27 +403,31 @@
                 
                 setupDataChannel();
 
-                // Recolectar candidatos ICE
-                peerConnection.onicecandidate = (event) => {
-                    if (!event.candidate) {
-                        // Todos los candidatos recolectados
-                        const offer = peerConnection.localDescription;
-                        document.getElementById('offerText').value = btoa(JSON.stringify(offer));
-                    }
-                };
-
                 // Crear oferta
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
+
+                console.log('Esperando candidatos ICE...');
+                // Esperar a que se completen los candidatos ICE
+                await waitForIceCandidates(peerConnection);
+                console.log('Candidatos ICE completos');
+
+                // Todos los candidatos recolectados
+                const offerWithCandidates = peerConnection.localDescription;
+                document.getElementById('offerText').value = btoa(JSON.stringify(offerWithCandidates));
+
+                // Ocultar indicador de carga
+                document.getElementById('loadingIndicator').style.display = 'none';
 
                 // Mostrar modo de oferta
                 document.getElementById('createMode').style.display = 'none';
                 document.getElementById('offerMode').style.display = 'block';
                 
-                addSystemMessage('Código generado. Compártelo con tu contacto.');
+                addSystemMessage('✅ Código generado. Compártelo con tu contacto.');
             } catch (error) {
                 console.error('Error creando conexión:', error);
-                alert('Error al crear la conexión. Intenta de nuevo.');
+                document.getElementById('loadingIndicator').style.display = 'none';
+                alert('Error al crear la conexión: ' + error.message);
             }
         }
 
@@ -397,40 +436,45 @@
             try {
                 const offerData = document.getElementById('remoteOfferInput').value.trim();
                 if (!offerData) {
-                    alert('Debes pegar el código primero');
+                    alert('❌ Debes pegar el código primero');
                     return;
                 }
 
+                console.log('Procesando oferta recibida...');
                 const offer = JSON.parse(atob(offerData));
                 
                 peerConnection = new RTCPeerConnection({ iceServers });
+                
+                // Monitorear conexión
+                monitorConnection(peerConnection);
 
                 // Escuchar canal de datos
                 peerConnection.ondatachannel = (event) => {
+                    console.log('Canal de datos recibido');
                     dataChannel = event.channel;
                     setupDataChannel();
-                };
-
-                // Recolectar candidatos ICE
-                peerConnection.onicecandidate = (event) => {
-                    if (!event.candidate) {
-                        const answer = peerConnection.localDescription;
-                        document.getElementById('answerText').value = btoa(JSON.stringify(answer));
-                    }
                 };
 
                 await peerConnection.setRemoteDescription(offer);
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
 
+                console.log('Esperando candidatos ICE...');
+                // Esperar a que se completen los candidatos ICE
+                await waitForIceCandidates(peerConnection);
+                console.log('Candidatos ICE completos');
+
+                const answerWithCandidates = peerConnection.localDescription;
+                document.getElementById('answerText').value = btoa(JSON.stringify(answerWithCandidates));
+
                 // Mostrar modo de respuesta
                 document.getElementById('joinMode').style.display = 'none';
                 document.getElementById('answerMode').style.display = 'block';
                 
-                addSystemMessage('Código de respuesta generado. Compártelo con tu contacto.');
+                addSystemMessage('✅ Código de respuesta generado. Compártelo con tu contacto.');
             } catch (error) {
                 console.error('Error uniéndose:', error);
-                alert('Error al procesar el código. Verifica que sea correcto.');
+                alert('❌ Error al procesar el código: ' + error.message);
             }
         }
 
@@ -439,37 +483,41 @@
             try {
                 const answerData = document.getElementById('answerInput').value.trim();
                 if (!answerData) {
-                    alert('Debes pegar el código de respuesta');
+                    alert('❌ Debes pegar el código de respuesta');
                     return;
                 }
 
+                console.log('Procesando respuesta recibida...');
                 const answer = JSON.parse(atob(answerData));
                 await peerConnection.setRemoteDescription(answer);
                 
-                addSystemMessage('Conectando...');
+                addSystemMessage('⏳ Conectando...');
+                console.log('Esperando que se establezca la conexión...');
             } catch (error) {
                 console.error('Error estableciendo respuesta:', error);
-                alert('Error al procesar la respuesta. Verifica que sea correcta.');
+                alert('❌ Error al procesar la respuesta: ' + error.message);
             }
         }
 
         // Configurar el canal de datos
         function setupDataChannel() {
             dataChannel.onopen = () => {
+                console.log('✅ Canal de datos abierto');
                 isConnected = true;
                 document.getElementById('statusDot').classList.add('connected');
                 document.getElementById('statusText').textContent = 'Conectado - Cifrado E2E';
                 document.getElementById('connectionPanel').classList.add('hidden');
                 document.getElementById('inputContainer').classList.remove('disabled');
-                addSystemMessage('¡Conexión establecida! Todos los mensajes están cifrados.');
+                addSystemMessage('🎉 ¡Conexión establecida! Todos los mensajes están cifrados.');
             };
 
             dataChannel.onclose = () => {
+                console.log('❌ Canal de datos cerrado');
                 isConnected = false;
                 document.getElementById('statusDot').classList.remove('connected');
                 document.getElementById('statusText').textContent = 'Desconectado';
                 document.getElementById('inputContainer').classList.add('disabled');
-                addSystemMessage('Conexión cerrada.');
+                addSystemMessage('⚠️ Conexión cerrada.');
             };
 
             dataChannel.onmessage = (event) => {
@@ -483,7 +531,23 @@
 
             dataChannel.onerror = (error) => {
                 console.error('Error en canal de datos:', error);
-                addSystemMessage('Error en la conexión.');
+                addSystemMessage('❌ Error en la conexión.');
+            };
+        }
+
+        // Agregar listener para estados de conexión
+        function monitorConnection(pc) {
+            pc.oniceconnectionstatechange = () => {
+                console.log('ICE connection state:', pc.iceConnectionState);
+                if (pc.iceConnectionState === 'failed') {
+                    addSystemMessage('❌ Fallo en la conexión. Intenta generar nuevos códigos.');
+                } else if (pc.iceConnectionState === 'disconnected') {
+                    addSystemMessage('⚠️ Conexión interrumpida.');
+                }
+            };
+
+            pc.onconnectionstatechange = () => {
+                console.log('Connection state:', pc.connectionState);
             };
         }
 
