@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat P2P Cifrado - Sin Servidor</title>
+    <title>Chat P2P Cifrado</title>
     <style>
         * {
             margin: 0;
@@ -14,7 +14,7 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -25,35 +25,174 @@
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .chat-container {
             max-width: 800px;
             width: 100%;
             height: 90vh;
             max-height: 700px;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
         }
 
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 20px;
+            padding: 25px;
             text-align: center;
         }
 
         .header h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
+            font-size: 28px;
+            margin-bottom: 8px;
         }
 
-        .status {
-            display: inline-flex;
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 12px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #495057;
+            border: 2px solid #dee2e6;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        .info-box {
+            background: #e7f5ff;
+            border-left: 4px solid #1971c2;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #1971c2;
+        }
+
+        .password-display {
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .password-display .label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .password-display .password {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 4px;
+            margin: 10px 0;
+        }
+
+        .password-display .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        .password-display .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            padding: 12px 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
             align-items: center;
             gap: 8px;
-            background: rgba(255,255,255,0.2);
-            padding: 8px 16px;
-            border-radius: 20px;
             font-size: 14px;
+            color: #495057;
         }
 
         .status-dot {
@@ -73,73 +212,7 @@
             50% { opacity: 0.5; }
         }
 
-        .connection-panel {
-            padding: 20px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        .connection-panel.hidden {
-            display: none;
-        }
-
-        .input-group {
-            margin-bottom: 15px;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #495057;
-        }
-
-        .input-group input,
-        .input-group textarea {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: monospace;
-        }
-
-        .input-group textarea {
-            resize: vertical;
-            min-height: 60px;
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-right: 10px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-
-        .chat-container {
+        .messages {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
@@ -185,32 +258,34 @@
             border-bottom-right-radius: 4px;
         }
 
+        .message-sender {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .message-text {
+            margin: 4px 0;
+        }
+
         .message-time {
             font-size: 11px;
             opacity: 0.7;
             margin-top: 4px;
         }
 
-        .message.received .message-time {
-            color: #6c757d;
-        }
-
-        .message.sent .message-time {
-            color: rgba(255,255,255,0.8);
-            text-align: right;
-        }
-
         .system-message {
             text-align: center;
             color: #6c757d;
             font-size: 13px;
-            margin: 10px 0;
+            margin: 15px 0;
             padding: 8px;
             background: rgba(108, 117, 125, 0.1);
             border-radius: 8px;
         }
 
-        .input-container {
+        .input-area {
             padding: 20px;
             background: white;
             border-top: 1px solid #dee2e6;
@@ -218,26 +293,20 @@
             gap: 10px;
         }
 
-        .input-container.disabled {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
-        #messageInput {
+        .input-area input {
             flex: 1;
             padding: 12px 16px;
             border: 2px solid #dee2e6;
             border-radius: 25px;
             font-size: 14px;
             outline: none;
-            transition: border-color 0.3s;
         }
 
-        #messageInput:focus {
+        .input-area input:focus {
             border-color: #667eea;
         }
 
-        #sendBtn {
+        .input-area button {
             padding: 12px 24px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -248,307 +317,302 @@
             transition: all 0.3s;
         }
 
-        #sendBtn:hover {
+        .input-area button:hover {
             transform: scale(1.05);
         }
 
-        .info-box {
-            background: #e7f5ff;
-            border-left: 4px solid #1971c2;
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            font-size: 13px;
-            color: #1971c2;
+        .waiting-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
         }
 
-        .encryption-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255,255,255,0.2);
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            margin-top: 5px;
+        .waiting-message .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
         }
 
-        .lock-icon {
-            font-size: 14px;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Pantalla 1: Bienvenida y nombre -->
+    <div class="container" id="nameScreen">
         <div class="header">
-            <h1>🔐 Chat P2P Cifrado</h1>
-            <div class="status">
-                <span class="status-dot" id="statusDot"></span>
-                <span id="statusText">Desconectado</span>
-            </div>
-            <div class="encryption-badge">
-                <span class="lock-icon">🔒</span>
-                <span>AES-256 + DTLS</span>
-            </div>
+            <h1>🔐 Chat Seguro P2P</h1>
+            <p>Sin servidores • Cifrado de extremo a extremo</p>
         </div>
-
-        <div class="connection-panel" id="connectionPanel">
+        <div class="content">
             <div class="info-box">
-                ℹ️ Este chat es 100% privado. No requiere servidor, ni registro, ni almacena datos. 
-                Todo funciona directamente entre navegadores usando WebRTC cifrado.
+                💡 Este chat no requiere registro y no almacena ningún dato. Todo está cifrado entre tú y tu contacto.
             </div>
-
-            <div id="createMode">
-                <button class="btn btn-primary" onclick="createConnection()">🔑 Crear nueva sala</button>
-                <button class="btn btn-secondary" onclick="switchToJoin()">🔗 Unirse a sala existente</button>
-                <div id="loadingIndicator" style="display: none; margin-top: 15px; text-align: center; color: #667eea;">
-                    <div>⏳ Generando código seguro...</div>
-                    <div style="font-size: 12px; margin-top: 5px;">Esto puede tardar unos segundos</div>
-                </div>
+            <div class="input-group">
+                <label>¿Cómo te llamas?</label>
+                <input type="text" id="nameInput" placeholder="Tu nombre" autofocus>
             </div>
-
-            <div id="offerMode" style="display: none;">
-                <div class="input-group">
-                    <label>1. Copia este código y envíaselo a tu contacto:</label>
-                    <textarea id="offerText" readonly onclick="this.select()"></textarea>
-                    <button class="btn btn-primary" onclick="copyOffer()" style="margin-top: 10px;">📋 Copiar código</button>
-                </div>
-                <div class="input-group">
-                    <label>2. Pega aquí el código que te envió tu contacto:</label>
-                    <textarea id="answerInput" placeholder="Pega el código de respuesta aquí..."></textarea>
-                    <button class="btn btn-primary" onclick="setAnswer()" style="margin-top: 10px;">Conectar</button>
-                </div>
-                <button class="btn btn-secondary" onclick="resetConnection()">Cancelar</button>
-            </div>
-
-            <div id="joinMode" style="display: none;">
-                <div class="input-group">
-                    <label>Pega el código que recibiste:</label>
-                    <textarea id="remoteOfferInput" placeholder="Pega aquí el código de tu contacto..."></textarea>
-                </div>
-                <button class="btn btn-primary" onclick="joinConnection()">Generar código de respuesta</button>
-                <button class="btn btn-secondary" onclick="switchToCreate()">Volver</button>
-            </div>
-
-            <div id="answerMode" style="display: none;">
-                <div class="input-group">
-                    <label>Copia este código y envíaselo a tu contacto:</label>
-                    <textarea id="answerText" readonly onclick="this.select()"></textarea>
-                    <button class="btn btn-primary" onclick="copyAnswer()">📋 Copiar código</button>
-                </div>
-                <p style="margin-top: 10px; color: #495057;">Conectando, espera un momento...</p>
-            </div>
-        </div>
-
-        <div class="chat-container" id="chatContainer"></div>
-
-        <div class="input-container disabled" id="inputContainer">
-            <input type="text" id="messageInput" placeholder="Escribe un mensaje..." onkeypress="if(event.key==='Enter') sendMessage()">
-            <button id="sendBtn" onclick="sendMessage()">Enviar</button>
+            <button class="btn btn-primary" onclick="setName()">Continuar →</button>
         </div>
     </div>
 
+    <!-- Pantalla 2: Crear o unirse -->
+    <div class="container" id="choiceScreen" style="display: none;">
+        <div class="header">
+            <h1>👋 Hola, <span id="userName"></span></h1>
+            <p>¿Qué quieres hacer?</p>
+        </div>
+        <div class="content">
+            <button class="btn btn-primary" onclick="showCreateRoom()">🔑 Crear nueva sala</button>
+            <button class="btn btn-secondary" onclick="showJoinRoom()">🚪 Unirme a una sala</button>
+        </div>
+    </div>
+
+    <!-- Pantalla 3: Crear sala -->
+    <div class="container" id="createScreen" style="display: none;">
+        <div class="header">
+            <h1>🔑 Crear Sala</h1>
+            <p>Se generará una contraseña única</p>
+        </div>
+        <div class="content">
+            <div class="password-display">
+                <div class="label">Contraseña de la sala</div>
+                <div class="password" id="roomPassword">----</div>
+                <button class="copy-btn" onclick="copyPassword()">📋 Copiar contraseña</button>
+            </div>
+            <div class="info-box">
+                ✅ Sala creada. Comparte esta contraseña con tu contacto para que pueda unirse.
+            </div>
+            <button class="btn btn-primary" onclick="startHosting()">Continuar →</button>
+            <button class="btn btn-secondary" onclick="goBack()">← Volver</button>
+        </div>
+    </div>
+
+    <!-- Pantalla 4: Unirse a sala -->
+    <div class="container" id="joinScreen" style="display: none;">
+        <div class="header">
+            <h1>🚪 Unirse a Sala</h1>
+            <p>Introduce la contraseña que te compartieron</p>
+        </div>
+        <div class="content">
+            <div class="input-group">
+                <label>Contraseña de la sala</label>
+                <input type="text" id="joinPassword" placeholder="Ej: ABCD" maxlength="4" style="text-transform: uppercase;">
+            </div>
+            <button class="btn btn-primary" onclick="joinRoom()">Unirse →</button>
+            <button class="btn btn-secondary" onclick="goBack()">← Volver</button>
+        </div>
+    </div>
+
+    <!-- Pantalla 5: Chat -->
+    <div class="container chat-container" id="chatScreen" style="display: none;">
+        <div class="header">
+            <h1>💬 Chat</h1>
+            <p>Sala: <span id="chatRoomId"></span></p>
+        </div>
+        <div class="status-bar">
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Esperando conexión...</span>
+            </div>
+            <div style="font-size: 12px; color: #6c757d;">
+                🔒 Cifrado E2E
+            </div>
+        </div>
+        <div class="messages" id="messages">
+            <div class="waiting-message" id="waitingMessage">
+                <div class="spinner"></div>
+                <p><strong>Esperando a que tu contacto se una...</strong></p>
+                <p style="font-size: 14px; margin-top: 10px;">Asegúrate de que tenga la contraseña correcta</p>
+            </div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Escribe un mensaje..." disabled>
+            <button onclick="sendMessage()" disabled id="sendButton">Enviar</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
-        let peerConnection;
-        let dataChannel;
-        let isConnected = false;
+        let userName = '';
+        let roomId = '';
+        let peer = null;
+        let conn = null;
+        let isHost = false;
 
-        // Servidores STUN públicos gratuitos de Google
-        const iceServers = [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' }
-        ];
+        // Pantalla 1: Establecer nombre
+        function setName() {
+            const name = document.getElementById('nameInput').value.trim();
+            if (!name) {
+                alert('Por favor ingresa tu nombre');
+                return;
+            }
+            userName = name;
+            document.getElementById('userName').textContent = userName;
+            showScreen('choiceScreen');
+        }
 
-        // Función para esperar a que se completen los candidatos ICE
-        function waitForIceCandidates(pc) {
-            return new Promise((resolve) => {
-                if (pc.iceGatheringState === 'complete') {
-                    resolve();
-                    return;
-                }
+        // Pantalla 2: Mostrar opciones
+        function showCreateRoom() {
+            const password = generatePassword();
+            roomId = password;
+            document.getElementById('roomPassword').textContent = password;
+            showScreen('createScreen');
+        }
 
-                const timeout = setTimeout(() => {
-                    pc.removeEventListener('icegatheringstatechange', checkState);
-                    resolve();
-                }, 5000); // Timeout de 5 segundos
+        function showJoinRoom() {
+            showScreen('joinScreen');
+        }
 
-                function checkState() {
-                    if (pc.iceGatheringState === 'complete') {
-                        clearTimeout(timeout);
-                        pc.removeEventListener('icegatheringstatechange', checkState);
-                        resolve();
-                    }
-                }
+        // Generar contraseña de 4 caracteres
+        function generatePassword() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 4; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
 
-                pc.addEventListener('icegatheringstatechange', checkState);
+        // Copiar contraseña
+        function copyPassword() {
+            const password = document.getElementById('roomPassword').textContent;
+            navigator.clipboard.writeText(password).then(() => {
+                alert('✅ Contraseña copiada: ' + password);
             });
         }
 
-        // Crear una nueva conexión (HOST)
-        async function createConnection() {
-            try {
-                // Mostrar indicador de carga
-                document.getElementById('loadingIndicator').style.display = 'block';
-                
-                peerConnection = new RTCPeerConnection({ iceServers });
-                
-                // Monitorear conexión
-                monitorConnection(peerConnection);
-                
-                // Crear canal de datos
-                dataChannel = peerConnection.createDataChannel('chat', {
-                    ordered: true
-                });
-                
-                setupDataChannel();
-
-                // Crear oferta
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-
-                console.log('Esperando candidatos ICE...');
-                // Esperar a que se completen los candidatos ICE
-                await waitForIceCandidates(peerConnection);
-                console.log('Candidatos ICE completos');
-
-                // Todos los candidatos recolectados
-                const offerWithCandidates = peerConnection.localDescription;
-                document.getElementById('offerText').value = btoa(JSON.stringify(offerWithCandidates));
-
-                // Ocultar indicador de carga
-                document.getElementById('loadingIndicator').style.display = 'none';
-
-                // Mostrar modo de oferta
-                document.getElementById('createMode').style.display = 'none';
-                document.getElementById('offerMode').style.display = 'block';
-                
-                addSystemMessage('✅ Código generado. Compártelo con tu contacto.');
-            } catch (error) {
-                console.error('Error creando conexión:', error);
-                document.getElementById('loadingIndicator').style.display = 'none';
-                alert('Error al crear la conexión: ' + error.message);
-            }
+        // Iniciar como host
+        function startHosting() {
+            isHost = true;
+            document.getElementById('chatRoomId').textContent = roomId;
+            showScreen('chatScreen');
+            initPeer(roomId);
         }
 
-        // Unirse a una conexión existente (CLIENT)
-        async function joinConnection() {
-            try {
-                const offerData = document.getElementById('remoteOfferInput').value.trim();
-                if (!offerData) {
-                    alert('❌ Debes pegar el código primero');
-                    return;
+        // Unirse a sala
+        function joinRoom() {
+            const password = document.getElementById('joinPassword').value.trim().toUpperCase();
+            if (!password || password.length !== 4) {
+                alert('Por favor ingresa una contraseña válida de 4 caracteres');
+                return;
+            }
+            isHost = false;
+            roomId = password;
+            document.getElementById('chatRoomId').textContent = roomId;
+            showScreen('chatScreen');
+            initPeer(null, password);
+        }
+
+        // Inicializar PeerJS
+        function initPeer(id, connectTo) {
+            // Usar servidor público de PeerJS
+            peer = new Peer(id, {
+                host: '0.peerjs.com',
+                secure: true,
+                port: 443,
+                debug: 2
+            });
+
+            peer.on('open', (peerId) => {
+                console.log('Mi Peer ID:', peerId);
+                addSystemMessage('✅ Conectado al servidor');
+                
+                if (connectTo) {
+                    // Cliente: conectar al host
+                    setTimeout(() => {
+                        connectToPeer(connectTo);
+                    }, 1000);
+                } else {
+                    // Host: esperar conexión
+                    addSystemMessage('⏳ Esperando a que alguien se una...');
                 }
+            });
 
-                console.log('Procesando oferta recibida...');
-                const offer = JSON.parse(atob(offerData));
-                
-                peerConnection = new RTCPeerConnection({ iceServers });
-                
-                // Monitorear conexión
-                monitorConnection(peerConnection);
+            peer.on('connection', (connection) => {
+                console.log('✅ Alguien se está conectando...');
+                setupConnection(connection);
+            });
 
-                // Escuchar canal de datos
-                peerConnection.ondatachannel = (event) => {
-                    console.log('Canal de datos recibido');
-                    dataChannel = event.channel;
-                    setupDataChannel();
-                };
-
-                await peerConnection.setRemoteDescription(offer);
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-
-                console.log('Esperando candidatos ICE...');
-                // Esperar a que se completen los candidatos ICE
-                await waitForIceCandidates(peerConnection);
-                console.log('Candidatos ICE completos');
-
-                const answerWithCandidates = peerConnection.localDescription;
-                document.getElementById('answerText').value = btoa(JSON.stringify(answerWithCandidates));
-
-                // Mostrar modo de respuesta
-                document.getElementById('joinMode').style.display = 'none';
-                document.getElementById('answerMode').style.display = 'block';
-                
-                addSystemMessage('✅ Código de respuesta generado. Compártelo con tu contacto.');
-            } catch (error) {
-                console.error('Error uniéndose:', error);
-                alert('❌ Error al procesar el código: ' + error.message);
-            }
-        }
-
-        // Establecer la respuesta (HOST recibe respuesta del CLIENT)
-        async function setAnswer() {
-            try {
-                const answerData = document.getElementById('answerInput').value.trim();
-                if (!answerData) {
-                    alert('❌ Debes pegar el código de respuesta');
-                    return;
+            peer.on('error', (err) => {
+                console.error('❌ Error de Peer:', err);
+                if (err.type === 'peer-unavailable') {
+                    addSystemMessage('❌ No se pudo encontrar la sala. Verifica la contraseña.');
+                } else if (err.type === 'unavailable-id') {
+                    addSystemMessage('❌ Esta sala ya existe. Prueba con otra contraseña.');
+                } else {
+                    addSystemMessage('❌ Error: ' + err.type);
                 }
+            });
 
-                console.log('Procesando respuesta recibida...');
-                const answer = JSON.parse(atob(answerData));
-                await peerConnection.setRemoteDescription(answer);
-                
-                addSystemMessage('⏳ Conectando...');
-                console.log('Esperando que se establezca la conexión...');
-            } catch (error) {
-                console.error('Error estableciendo respuesta:', error);
-                alert('❌ Error al procesar la respuesta: ' + error.message);
-            }
+            peer.on('disconnected', () => {
+                console.log('⚠️ Desconectado del servidor');
+                addSystemMessage('⚠️ Desconectado del servidor. Intentando reconectar...');
+                peer.reconnect();
+            });
         }
 
-        // Configurar el canal de datos
-        function setupDataChannel() {
-            dataChannel.onopen = () => {
-                console.log('✅ Canal de datos abierto');
-                isConnected = true;
+        // Conectar a otro peer
+        function connectToPeer(peerId) {
+            console.log('Conectando a:', peerId);
+            addSystemMessage('⏳ Conectando a la sala...');
+            conn = peer.connect(peerId, {
+                reliable: true,
+                serialization: 'json'
+            });
+            setupConnection(conn);
+        }
+
+        // Configurar conexión
+        function setupConnection(connection) {
+            conn = connection;
+
+            conn.on('open', () => {
+                console.log('✅ Conexión P2P establecida');
+                document.getElementById('waitingMessage').style.display = 'none';
                 document.getElementById('statusDot').classList.add('connected');
-                document.getElementById('statusText').textContent = 'Conectado - Cifrado E2E';
-                document.getElementById('connectionPanel').classList.add('hidden');
-                document.getElementById('inputContainer').classList.remove('disabled');
-                addSystemMessage('🎉 ¡Conexión establecida! Todos los mensajes están cifrados.');
-            };
+                document.getElementById('statusText').textContent = 'Conectado';
+                document.getElementById('messageInput').disabled = false;
+                document.getElementById('sendButton').disabled = false;
+                
+                addSystemMessage('🎉 ¡Conectado! Ya puedes chatear de forma segura.');
+                
+                // Enviar mensaje de bienvenida
+                conn.send({
+                    type: 'join',
+                    name: userName,
+                    time: new Date().toLocaleTimeString()
+                });
+            });
 
-            dataChannel.onclose = () => {
-                console.log('❌ Canal de datos cerrado');
-                isConnected = false;
+            conn.on('data', (data) => {
+                console.log('📨 Mensaje recibido:', data);
+                if (data.type === 'join') {
+                    addSystemMessage('👤 ' + data.name + ' se ha unido al chat');
+                } else if (data.type === 'message') {
+                    addMessage(data.text, 'received', data.name, data.time);
+                }
+            });
+
+            conn.on('close', () => {
+                console.log('❌ Conexión cerrada');
                 document.getElementById('statusDot').classList.remove('connected');
                 document.getElementById('statusText').textContent = 'Desconectado';
-                document.getElementById('inputContainer').classList.add('disabled');
-                addSystemMessage('⚠️ Conexión cerrada.');
-            };
+                document.getElementById('messageInput').disabled = true;
+                document.getElementById('sendButton').disabled = true;
+                addSystemMessage('❌ Tu contacto se ha desconectado');
+            });
 
-            dataChannel.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    addMessage(data.text, 'received', data.time);
-                } catch (error) {
-                    console.error('Error procesando mensaje:', error);
-                }
-            };
-
-            dataChannel.onerror = (error) => {
-                console.error('Error en canal de datos:', error);
-                addSystemMessage('❌ Error en la conexión.');
-            };
-        }
-
-        // Agregar listener para estados de conexión
-        function monitorConnection(pc) {
-            pc.oniceconnectionstatechange = () => {
-                console.log('ICE connection state:', pc.iceConnectionState);
-                if (pc.iceConnectionState === 'failed') {
-                    addSystemMessage('❌ Fallo en la conexión. Intenta generar nuevos códigos.');
-                } else if (pc.iceConnectionState === 'disconnected') {
-                    addSystemMessage('⚠️ Conexión interrumpida.');
-                }
-            };
-
-            pc.onconnectionstatechange = () => {
-                console.log('Connection state:', pc.connectionState);
-            };
+            conn.on('error', (err) => {
+                console.error('❌ Error en conexión:', err);
+                addSystemMessage('❌ Error en la conexión: ' + err);
+            });
         }
 
         // Enviar mensaje
@@ -556,98 +620,104 @@
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
             
-            if (!text || !isConnected) return;
+            if (!text || !conn) return;
 
             const message = {
+                type: 'message',
                 text: text,
+                name: userName,
                 time: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
             };
 
-            try {
-                dataChannel.send(JSON.stringify(message));
-                addMessage(text, 'sent', message.time);
-                input.value = '';
-            } catch (error) {
-                console.error('Error enviando mensaje:', error);
-                addSystemMessage('Error al enviar mensaje.');
-            }
+            conn.send(message);
+            addMessage(text, 'sent', userName, message.time);
+            input.value = '';
         }
 
+        // Enter para enviar
+        document.addEventListener('DOMContentLoaded', () => {
+            const nameInput = document.getElementById('nameInput');
+            if (nameInput) {
+                nameInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') setName();
+                });
+            }
+            
+            const joinPasswordInput = document.getElementById('joinPassword');
+            if (joinPasswordInput) {
+                joinPasswordInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') joinRoom();
+                });
+            }
+            
+            const messageInput = document.getElementById('messageInput');
+            if (messageInput) {
+                messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') sendMessage();
+                });
+            }
+        });
+
         // Añadir mensaje a la interfaz
-        function addMessage(text, type, time) {
-            const container = document.getElementById('chatContainer');
+        function addMessage(text, type, sender, time) {
+            const messagesDiv = document.getElementById('messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
             
+            let senderHtml = '';
+            if (type === 'received') {
+                senderHtml = `<div class="message-sender">${escapeHtml(sender)}</div>`;
+            }
+            
             messageDiv.innerHTML = `
                 <div class="message-content">
-                    <div>${escapeHtml(text)}</div>
+                    ${senderHtml}
+                    <div class="message-text">${escapeHtml(text)}</div>
                     <div class="message-time">${time}</div>
                 </div>
             `;
             
-            container.appendChild(messageDiv);
-            container.scrollTop = container.scrollHeight;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
         // Añadir mensaje del sistema
         function addSystemMessage(text) {
-            const container = document.getElementById('chatContainer');
+            const messagesDiv = document.getElementById('messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'system-message';
             messageDiv.textContent = text;
-            container.appendChild(messageDiv);
-            container.scrollTop = container.scrollHeight;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // Escapar HTML para prevenir XSS
+        // Escapar HTML
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
-        // Copiar oferta al portapapeles
-        function copyOffer() {
-            const text = document.getElementById('offerText');
-            text.select();
-            document.execCommand('copy');
-            alert('¡Código copiado! Envíaselo a tu contacto.');
+        // Cambiar pantalla
+        function showScreen(screenId) {
+            document.querySelectorAll('.container').forEach(container => {
+                container.style.display = 'none';
+            });
+            document.getElementById(screenId).style.display = 'block';
         }
 
-        // Copiar respuesta al portapapeles
-        function copyAnswer() {
-            const text = document.getElementById('answerText');
-            text.select();
-            document.execCommand('copy');
-            alert('¡Código copiado! Envíaselo a tu contacto.');
-        }
-
-        // Cambiar a modo unirse
-        function switchToJoin() {
-            document.getElementById('createMode').style.display = 'none';
-            document.getElementById('joinMode').style.display = 'block';
-        }
-
-        // Cambiar a modo crear
-        function switchToCreate() {
-            document.getElementById('joinMode').style.display = 'none';
-            document.getElementById('createMode').style.display = 'block';
-        }
-
-        // Resetear conexión
-        function resetConnection() {
-            if (peerConnection) {
-                peerConnection.close();
+        // Volver
+        function goBack() {
+            if (peer) {
+                peer.destroy();
+                peer = null;
             }
-            document.getElementById('offerMode').style.display = 'none';
-            document.getElementById('createMode').style.display = 'block';
-            document.getElementById('offerText').value = '';
-            document.getElementById('answerInput').value = '';
+            if (conn) {
+                conn.close();
+                conn = null;
+            }
+            showScreen('choiceScreen');
         }
-
-        // Mensaje de bienvenida
-        addSystemMessage('¡Bienvenido! Crea una nueva sala o únete a una existente.');
     </script>
 </body>
 </html>
