@@ -4,115 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src * wss: https:;">
-    <title>SecureP2P v2.6 - SAS Verification</title>
+    <title>SecureP2P v2.6.1 - Extractable Fix</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .message-in { animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .sas-match { animation: pulse-green 2s infinite; }
-        @keyframes pulse-green { 
-            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); border-color: rgba(34, 197, 94, 0.4); }
-            50% { box-shadow: 0 0 20px 10px rgba(34, 197, 94, 0); border-color: rgba(34, 197, 94, 1); }
-            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); border-color: rgba(34, 197, 94, 0.4); }
-        }
+        .sas-pulse { animation: pulse 2s infinite; box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+        @keyframes pulse { 70% { box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); } }
         .hidden { display: none !important; }
     </style>
 </head>
 <body class="bg-slate-950 min-h-screen flex items-center justify-center p-4 font-sans text-slate-900">
 
-    <!-- MODAL SAS MEJORADO -->
+    <!-- MODAL SAS -->
     <div id="sasModal" class="fixed inset-0 bg-slate-950/98 hidden z-[100] items-center justify-center p-4">
         <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl message-in border-4 border-indigo-200">
-            
-            <!-- Header -->
             <div class="text-center mb-6">
                 <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                     </svg>
                 </div>
-                <h2 class="text-2xl font-black text-slate-900 mb-1">Verificación de Seguridad</h2>
-                <p class="text-sm text-slate-500">Paso obligatorio anti-interceptación</p>
+                <h2 class="text-2xl font-black text-slate-900">Verificación SAS</h2>
+                <p class="text-sm text-slate-500">Confirma que ambos ven el mismo código</p>
             </div>
 
-            <!-- Instrucciones -->
             <div class="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6 rounded-r-lg">
-                <p class="text-sm text-amber-800 font-bold mb-2">⚠️ INSTRUCCIONES:</p>
-                <ol class="text-xs text-amber-700 space-y-1 list-decimal list-inside">
-                    <li>Llama o video-llama a tu contacto</li>
-                    <li>Pregúntale qué código ve en su pantalla</li>
-                    <li>Si coinciden: ✅ Seguro</li>
-                    <li>Si difieren: 🚨 ¡ABORTAR! Hay atacante</li>
-                </ol>
+                <p class="text-xs text-amber-800 font-bold">📞 LLAMA A TU CONTACTO Y COMPARA:</p>
             </div>
 
-            <!-- Código SAS -->
             <div class="text-center mb-6">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Tu Código de Verificación</p>
-                <div id="sasDisplay" class="text-5xl font-mono font-black tracking-[0.5em] bg-slate-100 py-6 rounded-2xl border-2 border-slate-300 text-indigo-600 select-all">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Tu Código</p>
+                <div id="sasDisplay" class="text-5xl font-mono font-black tracking-[0.5em] bg-slate-100 py-6 rounded-2xl border-2 border-slate-300 text-indigo-600 select-all sas-pulse">
                     ----
                 </div>
-                <p class="text-xs text-slate-400 mt-2">Este código debe ser <span class="font-bold text-indigo-600">IDÉNTICO</span> al de tu contacto</p>
             </div>
 
-            <!-- Acciones -->
             <div class="space-y-3">
                 <button onclick="confirmSAS()" class="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black text-sm uppercase tracking-wider transition-all shadow-lg shadow-green-200">
-                    ✅ Códigos Coinciden - Continuar
+                    ✅ Coinciden - Continuar
                 </button>
-                
-                <button onclick="showSASHelp()" class="w-full py-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl font-bold text-xs">
-                    ❓ No sé qué hacer / Ayuda
-                </button>
-                
                 <button onclick="abortConnection()" class="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs">
-                    🚨 Códigos Diferentes - Abortar
+                    🚨 No coinciden - Abortar
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DE AYUDA SAS -->
-    <div id="sasHelpModal" class="fixed inset-0 bg-black/90 hidden z-[110] items-center justify-center p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <h3 class="text-xl font-black mb-4">¿Cómo verificar el código SAS?</h3>
-            
-            <div class="space-y-4 text-sm">
-                <div class="bg-slate-50 p-4 rounded-xl">
-                    <h4 class="font-bold text-indigo-600 mb-2">📞 Opción 1: Llamada telefónica (Recomendado)</h4>
-                    <p class="text-slate-600">"Hola, ¿qué código ves en tu pantalla? Yo veo <span class="font-mono bg-indigo-100 px-2 py-1 rounded">A3F9B2D1</span>..."</p>
-                </div>
-                
-                <div class="bg-slate-50 p-4 rounded-xl">
-                    <h4 class="font-bold text-indigo-600 mb-2">📹 Opción 2: Video llamada</h4>
-                    <p class="text-slate-600">Comparte pantalla o muestra el código a cámara. Ambos deben ver los mismos 8 caracteres.</p>
-                </div>
-                
-                <div class="bg-slate-50 p-4 rounded-xl">
-                    <h4 class="font-bold text-indigo-600 mb-2">💬 Opción 3: Canal pre-verificado</h4>
-                    <p class="text-slate-600">WhatsApp/Signal donde ya verificaste la identidad de la persona previamente.</p>
-                </div>
-                
-                <div class="bg-red-50 border border-red-200 p-4 rounded-xl">
-                    <h4 class="font-bold text-red-600 mb-2">🚨 ¿Y si no coinciden?</h4>
-                    <p class="text-red-700 font-bold">NUNCA hagas clic en "Continuar". Hay alguien interceptando tu conexión. Cierra la app inmediatamente.</p>
-                </div>
-            </div>
-            
-            <button onclick="$('sasHelpModal').classList.add('hidden')" class="w-full mt-6 py-3 bg-slate-900 text-white rounded-xl font-bold">
-                Entendido, volver
-            </button>
-        </div>
-    </div>
-
-    <!-- RESTO DE TU UI (simplificado) -->
+    <!-- UI Principal -->
     <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[600px]">
         
-        <!-- Setup Screen -->
+        <!-- Setup -->
         <div id="setupScreen" class="p-8 flex flex-col h-full justify-center">
             <div class="text-center mb-8">
-                <h1 class="text-3xl font-black">SecureP2P <span class="text-indigo-600">v2.6</span></h1>
-                <p class="text-slate-400 text-sm mt-2">Mensajería con verificación SAS</p>
+                <h1 class="text-3xl font-black">SecureP2P <span class="text-indigo-600">v2.6.1</span></h1>
+                <p class="text-slate-400 text-sm mt-2">Con verificación SAS</p>
             </div>
             <input type="text" id="nameInput" placeholder="Tu nombre" class="w-full px-4 py-3 rounded-xl border-2 mb-4 font-bold">
             <div class="grid grid-cols-2 gap-3">
@@ -121,23 +67,23 @@
             </div>
         </div>
 
-        <!-- Join Screen -->
+        <!-- Join -->
         <div id="joinScreen" class="hidden p-8 flex flex-col h-full justify-center">
             <button onclick="switchScreen('setupScreen')" class="text-left text-slate-400 mb-4">← Volver</button>
-            <h2 class="text-2xl font-black mb-4">Unirse a Sala</h2>
+            <h2 class="text-2xl font-black mb-4">Unirse</h2>
             <input type="text" id="joinIdInput" placeholder="XXXXXX-XXXXXX" class="w-full px-4 py-3 rounded-xl border-2 mb-4 font-mono uppercase font-bold">
             <button onclick="connectToPeer()" class="py-3 bg-indigo-600 text-white rounded-xl font-bold">Conectar</button>
         </div>
 
-        <!-- Chat Screen -->
+        <!-- Chat -->
         <div id="chatScreen" class="hidden flex flex-col h-full">
             <div class="bg-indigo-600 p-4 text-white flex justify-between items-center">
-                <span class="font-bold" id="displayPeerName">Conectando...</span>
+                <span class="font-bold" id="displayPeerName">...</span>
                 <span class="text-xs bg-black/30 px-2 py-1 rounded" id="statusText">Pendiente</span>
             </div>
             <div id="messageContainer" class="flex-1 overflow-y-auto p-4 bg-slate-50"></div>
             <div class="p-4 bg-white border-t flex gap-2">
-                <input type="text" id="chatInput" disabled placeholder="Verifica SAS primero..." class="flex-1 bg-slate-100 px-4 py-2 rounded-xl disabled:opacity-50">
+                <input type="text" id="chatInput" disabled placeholder="Verifica SAS primero..." class="flex-1 bg-slate-100 px-4 py-2 rounded-xl disabled:opacity-50 font-bold">
                 <button onclick="handleSendMessage()" disabled id="sendBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-xl disabled:opacity-50 font-bold">Enviar</button>
             </div>
         </div>
@@ -145,9 +91,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
-        // ========== CONFIGURACIÓN ==========
-        const MAX_FILE_SIZE = 20 * 1024 * 1024;
-        let myPeer, connection, myName, myKeyPairs, currentAesKey;
+        // ========== ESTADO ==========
+        let myPeer = null;
+        let connection = null;
+        let myName = '';
+        let myKeyPairs = null;
+        let currentAesKey = null;
         let isSASVerified = false;
         const processedIds = new Set();
 
@@ -158,12 +107,12 @@
             $(id)?.classList.remove('hidden');
         }
 
-        // ========== CRIPTOGRAFÍA (simplificada) ==========
-        
+        // ========== CRIPTOGRAFÍA CORREGIDA ==========
+
         async function generateKeyPair() {
             return window.crypto.subtle.generateKey(
                 { name: "ECDH", namedCurve: "P-256" },
-                true,
+                true,  // extractable para debugging
                 ["deriveBits"]
             );
         }
@@ -181,137 +130,111 @@
                 return await window.crypto.subtle.importKey(
                     "spki", bytes, { name: "ECDH", namedCurve: "P-256" }, true, []
                 );
-            } catch (e) { return null; }
+            } catch (e) { 
+                console.error("Import error:", e);
+                return null; 
+            }
         }
 
+        // ✅ CORREGIDO: Clave extractable para poder hacer SAS
         async function deriveSharedKey(privateKey, publicKey) {
             const sharedBits = await window.crypto.subtle.deriveBits(
                 { name: "ECDH", public: publicKey },
                 privateKey,
                 256
             );
-            const hashBuffer = await window.crypto.subtle.digest("SHA-256", sharedBits);
-            return await window.crypto.subtle.importKey(
-                "raw", hashBuffer, { name: "AES-GCM", length: 256 },
-                false, ["encrypt", "decrypt"]
+            
+            // ✅ EXTRACTABLE: true - necesario para getSAS()
+            const aesKey = await window.crypto.subtle.importKey(
+                "raw",
+                await window.crypto.subtle.digest("SHA-256", sharedBits),
+                { name: "AES-GCM", length: 256 },
+                true,  // ← ¡EXTRACTABLE TRUE!
+                ["encrypt", "decrypt"]
             );
+
+            return aesKey;
         }
 
+        // ✅ AHORA FUNCIONA porque la clave es extractable
         async function getSAS(aesKey) {
-            const exported = await window.crypto.subtle.exportKey("raw", aesKey);
-            const hash = await window.crypto.subtle.digest("SHA-256", exported);
-            const bytes = new Uint8Array(hash);
-            return Array.from(bytes.slice(0, 4))
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join('')
-                .toUpperCase();
-        }
-
-        // ========== LÓGICA SAS ==========
-
-        async function confirmSAS() {
-            isSASVerified = true;
-            
-            // Ocultar modal SAS
-            $('sasModal').classList.add('hidden');
-            
-            // Activar chat
-            const chatInput = $('chatInput');
-            const sendBtn = $('sendBtn');
-            const statusText = $('statusText');
-            
-            if (chatInput) {
-                chatInput.disabled = false;
-                chatInput.placeholder = "Escribe mensaje seguro...";
-                chatInput.focus();
+            try {
+                const exported = await window.crypto.subtle.exportKey("raw", aesKey);
+                const hash = await window.crypto.subtle.digest("SHA-256", exported);
+                const bytes = new Uint8Array(hash);
+                return Array.from(bytes.slice(0, 4))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join('')
+                    .toUpperCase();
+            } catch (err) {
+                console.error("SAS error:", err);
+                return "ERROR";
             }
-            if (sendBtn) sendBtn.disabled = false;
-            if (statusText) {
-                statusText.textContent = '🔒 Cifrado';
-                statusText.className = 'text-xs bg-green-500/30 text-green-100 px-2 py-1 rounded font-bold';
-            }
-            
-            addSystemLog("✅ SAS verificado. Canal seguro activado.");
         }
 
-        function showSASHelp() {
-            $('sasHelpModal').classList.remove('hidden');
-            $('sasHelpModal').style.display = 'flex';
+        async function encryptData(data, key) {
+            const iv = window.crypto.getRandomValues(new Uint8Array(12));
+            const encrypted = await window.crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv },
+                key,
+                data
+            );
+            return { data: Array.from(new Uint8Array(encrypted)), iv: Array.from(iv) };
         }
 
-        function abortConnection() {
-            addSystemLog("🚨 Conexión abortada por seguridad", "red");
-            if (connection) connection.close();
-            if (myPeer) myPeer.destroy();
-            setTimeout(() => location.reload(), 2000);
-        }
-
-        // ========== PEERJS ==========
-
-        const setupConnection = (conn) => {
-            connection = conn;
-            
-            conn.on('data', async (raw) => {
-                if (!raw || typeof raw !== 'object') return;
-
-                try {
-                    // HANDSHAKE
-                    if (raw.type === 'handshake' || raw.type === 'handshake_ack') {
-                        const remotePubKey = await importPublicKey(raw.pubKey);
-                        if (!remotePubKey) return;
-
-                        // Si somos respondedor, enviar ack
-                        if (!myKeyPairs && raw.type === 'handshake') {
-                            myKeyPairs = await generateKeyPair();
-                            const myPub = await exportPublicKey(myKeyPairs.publicKey);
-                            conn.send({ type: 'handshake_ack', pubKey: myPub, name: myName });
-                        }
-
-                        // Derivar clave y mostrar SAS
-                        currentAesKey = await deriveSharedKey(myKeyPairs.privateKey, remotePubKey);
-                        const sas = await getSAS(currentAesKey);
-                        
-                        // Mostrar en UI
-                        $('sasDisplay').textContent = sas;
-                        $('displayPeerName').textContent = raw.name || "Contacto";
-                        
-                        // MOSTRAR MODAL SAS
-                        $('sasModal').classList.remove('hidden');
-                        $('sasModal').style.display = 'flex';
-                        
-                        addSystemLog("🔐 Handshake completado. Verifica SAS con tu contacto.");
-                    }
-
-                    // CHAT (solo si SAS verificado)
-                    if (raw.type === 'chat' && isSASVerified && currentAesKey) {
-                        const decrypted = await decryptMessage(raw.payload, currentAesKey);
-                        if (!decrypted) return;
-                        
-                        const decoded = JSON.parse(new TextDecoder().decode(decrypted));
-                        if (processedIds.has(decoded.uid)) return; // Anti-replay
-                        processedIds.add(decoded.uid);
-                        
-                        addMessage(decoded.text, 'received', conn.metadata?.name);
-                    }
-                } catch (err) {
-                    console.error("Error:", err);
-                }
-            });
-        };
-
-        async function decryptMessage(payload, key) {
+        async function decryptData(payload, key) {
             try {
                 return await window.crypto.subtle.decrypt(
                     { name: "AES-GCM", iv: new Uint8Array(payload.iv) },
                     key,
                     new Uint8Array(payload.data)
                 );
-            } catch (e) { return null; }
+            } catch (e) { 
+                console.error("Decrypt failed:", e);
+                return null; 
+            }
         }
 
-        // ========== UI HELPERS ==========
+        // ========== LÓGICA SAS ==========
 
-        function addMessage(text, type, sender) {
+        async function confirmSAS() {
+            isSASVerified = true;
+            $('sasModal').classList.add('hidden');
+            
+            const chatInput = $('chatInput');
+            const sendBtn = $('sendBtn');
+            const statusText = $('statusText');
+            
+            if (chatInput) {
+                chatInput.disabled = false;
+                chatInput.placeholder = "Mensaje seguro...";
+                chatInput.focus();
+            }
+            if (sendBtn) sendBtn.disabled = false;
+            if (statusText) {
+                statusText.textContent = '🔒 Seguro';
+                statusText.className = 'text-xs bg-green-500 text-white px-2 py-1 rounded font-bold';
+            }
+            
+            addLog("✅ SAS verificado. Canal seguro.", "green");
+        }
+
+        function abortConnection() {
+            addLog("🚨 Abortado por seguridad", "red");
+            if (connection) connection.close();
+            if (myPeer) myPeer.destroy();
+            setTimeout(() => location.reload(), 2000);
+        }
+
+        function addLog(msg, color = "slate") {
+            const container = $('messageContainer');
+            const div = document.createElement('div');
+            div.className = `text-xs text-center my-3 font-bold text-${color}-600`;
+            div.textContent = msg;
+            container.appendChild(div);
+        }
+
+        function addMsg(text, type, sender) {
             const container = $('messageContainer');
             const div = document.createElement('div');
             div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} message-in`;
@@ -325,13 +248,74 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        function addSystemLog(msg, color = "indigo") {
-            const container = $('messageContainer');
-            const div = document.createElement('div');
-            div.className = `text-xs text-center my-4 font-bold text-${color}-500`;
-            div.textContent = msg;
-            container.appendChild(div);
-        }
+        // ========== PEERJS ==========
+
+        const setupConnection = (conn) => {
+            connection = conn;
+            
+            conn.on('data', async (raw) => {
+                if (!raw || typeof raw !== 'object') return;
+
+                try {
+                    // HANDSHAKE
+                    if (raw.type === 'handshake' || raw.type === 'handshake_ack') {
+                        console.log("Handshake received");
+                        
+                        const remotePubKey = await importPublicKey(raw.pubKey);
+                        if (!remotePubKey) {
+                            addLog("❌ Clave inválida", "red");
+                            return;
+                        }
+
+                        // Responder si somos el servidor
+                        if (!myKeyPairs && raw.type === 'handshake') {
+                            myKeyPairs = await generateKeyPair();
+                            const myPub = await exportPublicKey(myKeyPairs.publicKey);
+                            conn.send({ type: 'handshake_ack', pubKey: myPub, name: myName });
+                        }
+
+                        // Derivar clave y mostrar SAS
+                        currentAesKey = await deriveSharedKey(myKeyPairs.privateKey, remotePubKey);
+                        const sas = await getSAS(currentAesKey);
+                        
+                        console.log("SAS generado:", sas);
+                        
+                        // Mostrar en UI
+                        $('sasDisplay').textContent = sas;
+                        $('displayPeerName').textContent = raw.name || "Contacto";
+                        
+                        // MOSTRAR MODAL SAS
+                        $('sasModal').classList.remove('hidden');
+                        $('sasModal').style.display = 'flex';
+                        
+                        addLog("🔐 Handshake OK. Verifica SAS con tu contacto.", "indigo");
+                    }
+
+                    // CHAT (solo si SAS verificado)
+                    if (raw.type === 'chat' && isSASVerified && currentAesKey) {
+                        const decrypted = await decryptData(raw.payload, currentAesKey);
+                        if (!decrypted) {
+                            addLog("❌ Mensaje corrupto", "red");
+                            return;
+                        }
+                        
+                        const decoded = JSON.parse(new TextDecoder().decode(decrypted));
+                        if (processedIds.has(decoded.uid)) return;
+                        processedIds.add(decoded.uid);
+                        
+                        addMsg(decoded.text, 'received', raw.metadata?.name || "Contacto");
+                    }
+                } catch (err) {
+                    console.error("Error:", err);
+                    addLog("Error de procesamiento", "red");
+                }
+            });
+
+            conn.on('close', () => {
+                addLog("Conexión cerrada", "red");
+                if (myPeer) myPeer.destroy();
+            });
+        };
 
         // ========== ACCIONES ==========
 
@@ -342,18 +326,23 @@
             
             switchScreen('chatScreen');
             
-            // Generar ID y esperar conexión
             myPeer = new Peer(generateId(), {
-                host: '0.peerjs.com', port: 443, secure: true
+                host: '0.peerjs.com', port: 443, secure: true, debug: 2
             });
             
             myPeer.on('open', (id) => {
-                addSystemLog(`🆔 Tu ID: ${id} - Compártelo con tu contacto`);
+                addLog(`🆔 Tu ID: ${id}`, "indigo");
+                addLog("Esperando conexión...", "slate");
             });
             
             myPeer.on('connection', (conn) => {
+                addLog("📞 Conexión entrante...", "indigo");
                 setupConnection(conn);
-                addSystemLog("📞 Conexión entrante - Esperando handshake...");
+            });
+            
+            myPeer.on('error', (err) => {
+                console.error("Peer error:", err);
+                addLog(`Error: ${err.type}`, "red");
             });
         };
 
@@ -370,21 +359,30 @@
             switchScreen('chatScreen');
             
             myPeer = new Peer(null, {
-                host: '0.peerjs.com', port: 443, secure: true
+                host: '0.peerjs.com', port: 443, secure: true, debug: 2
             });
             
-            myPeer.on('open', () => {
-                const conn = myPeer.connect(targetId, { reliable: true, metadata: { name: myName } });
+            myPeer.on('open', async () => {
+                addLog("🔗 Conectando...", "indigo");
+                
+                const conn = myPeer.connect(targetId, { 
+                    reliable: true, 
+                    metadata: { name: myName } 
+                });
+                
                 setupConnection(conn);
                 
-                // Enviar handshake inicial
+                // Enviar handshake
                 setTimeout(async () => {
-                    myKeyPairs = await generateKeyPair();
-                    const myPub = await exportPublicKey(myKeyPairs.publicKey);
-                    conn.send({ type: 'handshake', pubKey: myPub, name: myName });
-                }, 500);
-                
-                addSystemLog("🔗 Conectando... Espera el código SAS");
+                    try {
+                        myKeyPairs = await generateKeyPair();
+                        const myPub = await exportPublicKey(myKeyPairs.publicKey);
+                        conn.send({ type: 'handshake', pubKey: myPub, name: myName });
+                        addLog("📤 Handshake enviado", "indigo");
+                    } catch (err) {
+                        console.error("Handshake error:", err);
+                    }
+                }, 1000);
             });
         };
 
@@ -393,15 +391,21 @@
             const text = input.value.trim();
             if (!text || !connection || !currentAesKey || !isSASVerified) return;
             
-            const payload = new TextEncoder().encode(JSON.stringify({
-                text, ts: Date.now(), uid: crypto.randomUUID()
-            }));
-            
-            // Encriptar (simplificado - necesitarías función encrypt completa)
-            // connection.send({ type: 'chat', payload: encrypted });
-            
-            addMessage(text, 'sent');
-            input.value = '';
+            try {
+                const uid = crypto.randomUUID();
+                const payload = new TextEncoder().encode(JSON.stringify({
+                    text, ts: Date.now(), uid
+                }));
+                
+                const encrypted = await encryptData(payload, currentAesKey);
+                connection.send({ type: 'chat', payload: encrypted, metadata: { name: myName } });
+                
+                addMsg(text, 'sent');
+                input.value = '';
+            } catch (err) {
+                console.error("Send error:", err);
+                addLog("Error al enviar", "red");
+            }
         };
 
         function generateId() {
@@ -415,6 +419,11 @@
             }
             return res;
         }
+
+        // Event listeners
+        $('chatInput')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSendMessage();
+        });
     </script>
 </body>
 </html>
