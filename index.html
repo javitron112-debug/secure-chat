@@ -3,871 +3,721 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: wss: data: blob:; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; connect-src 'self' https://0.peerjs.com https://peerjs.com https://*.peerjs.com wss://0.peerjs.com wss://*.peerjs.com; img-src 'self' data: blob:;">
-    <title>SecureP2P v2.5.5 - Fixed</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Chat P2P Cifrado</title>
     <style>
-        .message-in { animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
-        .sas-pulse { animation: pulse-border 2s infinite; }
-        @keyframes pulse-border { 0% { border-color: rgba(99, 102, 241, 0.4); } 50% { border-color: rgba(99, 102, 241, 1); } 100% { border-color: rgba(99, 102, 241, 0.4); } }
-        .glass-blur { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-        .hidden { display: none !important; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .chat-container {
+            max-width: 800px;
+            width: 100%;
+            height: 90vh;
+            max-height: 700px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 12px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #495057;
+            border: 2px solid #dee2e6;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        .info-box {
+            background: #e7f5ff;
+            border-left: 4px solid #1971c2;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #1971c2;
+        }
+
+        .password-display {
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .password-display .label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .password-display .password {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 4px;
+            margin: 10px 0;
+        }
+
+        .password-display .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        .password-display .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            padding: 12px 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #495057;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #51cf66;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.sent {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+
+        .message.received .message-content {
+            background: white;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.sent .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-sender {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .message-text {
+            margin: 4px 0;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .system-message {
+            text-align: center;
+            color: #6c757d;
+            font-size: 13px;
+            margin: 15px 0;
+            padding: 8px;
+            background: rgba(108, 117, 125, 0.1);
+            border-radius: 8px;
+        }
+
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #dee2e6;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .input-area input:focus {
+            border-color: #667eea;
+        }
+
+        .input-area button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .input-area button:hover {
+            transform: scale(1.05);
+        }
+
+        .waiting-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .waiting-message .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="bg-slate-950 min-h-screen flex items-center justify-center p-4 font-sans text-slate-900 overflow-hidden">
-
-    <!-- Modal de Notificación -->
-    <div id="customAlert" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden z-[100] items-center justify-center p-4">
-        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center border-t-8 border-red-600">
-            <div class="mx-auto mb-4 w-16 h-16 flex items-center justify-center rounded-2xl bg-red-50 text-red-600">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+<body>
+    <!-- Pantalla 1: Bienvenida y nombre -->
+    <div class="container" id="nameScreen">
+        <div class="header">
+            <h1>🔐 Chat Seguro P2P</h1>
+            <p>Sin servidores • Cifrado de extremo a extremo</p>
+        </div>
+        <div class="content">
+            <div class="info-box">
+                💡 Este chat no requiere registro y no almacena ningún dato. Todo está cifrado entre tú y tu contacto.
             </div>
-            <h3 class="text-xl font-black mb-2 text-slate-800">Error de Seguridad</h3>
-            <p id="alertMsg" class="text-slate-600 mb-8 text-sm leading-relaxed font-medium"></p>
-            <button onclick="location.reload()" class="w-full px-4 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-red-700 transition-all">Reiniciar</button>
+            <div class="input-group">
+                <label>¿Cómo te llamas?</label>
+                <input type="text" id="nameInput" placeholder="Tu nombre" autofocus>
+            </div>
+            <button class="btn btn-primary" onclick="setName()">Continuar →</button>
         </div>
     </div>
 
-    <!-- Modal SAS -->
-    <div id="sasModal" class="fixed inset-0 bg-slate-950/98 hidden z-[90] items-center justify-center p-4 glass-blur">
-        <div class="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl text-center border-t-[12px] border-indigo-600 message-in">
-            <div class="inline-flex p-4 bg-indigo-50 rounded-2xl mb-6">
-                <svg class="w-10 h-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-            </div>
-            <h3 class="text-2xl font-black mb-2 text-slate-900">Verificar Identidad</h3>
-            <p class="text-slate-500 text-[10px] mb-8 font-bold uppercase tracking-widest">Código SAS (debe coincidir)</p>
-            <div id="sasDisplay" class="text-5xl font-mono font-black tracking-[0.4em] bg-slate-50 py-8 rounded-3xl mb-8 text-indigo-600 border border-slate-100 shadow-inner sas-pulse">----</div>
-            <div class="space-y-3">
-                <button onclick="confirmSAS()" class="w-full px-6 py-5 bg-indigo-600 text-white rounded-[1.25rem] font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl active:scale-95">Confirmar</button>
-                <button onclick="abortConnection()" class="w-full text-slate-400 text-[10px] font-black uppercase hover:text-red-600 transition-colors py-2">Abortar</button>
-            </div>
+    <!-- Pantalla 2: Crear o unirse -->
+    <div class="container" id="choiceScreen" style="display: none;">
+        <div class="header">
+            <h1>👋 Hola, <span id="userName"></span></h1>
+            <p>¿Qué quieres hacer?</p>
+        </div>
+        <div class="content">
+            <button class="btn btn-primary" onclick="showCreateRoom()">🔑 Crear nueva sala</button>
+            <button class="btn btn-secondary" onclick="showJoinRoom()">🚪 Unirme a una sala</button>
         </div>
     </div>
 
-    <!-- Modal de Solicitud -->
-    <div id="requestModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 items-center justify-center p-4">
-        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-slate-100">
-            <h3 class="text-xl font-black mb-3 text-slate-900">Solicitud Entrante</h3>
-            <p class="text-slate-500 mb-8 font-medium text-sm leading-relaxed">Un dispositivo solicita conexión cifrada.</p>
-            <div class="flex gap-3">
-                <button onclick="respondToRequest(false)" class="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 rounded-2xl font-bold text-slate-600 transition-all uppercase text-xs">Rechazar</button>
-                <button onclick="respondToRequest(true)" class="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-lg uppercase text-xs">Aceptar</button>
+    <!-- Pantalla 3: Crear sala -->
+    <div class="container" id="createScreen" style="display: none;">
+        <div class="header">
+            <h1>🔑 Crear Sala</h1>
+            <p>Se generará una contraseña única</p>
+        </div>
+        <div class="content">
+            <div class="password-display">
+                <div class="label">Contraseña de la sala</div>
+                <div class="password" id="roomPassword">----</div>
+                <button class="copy-btn" onclick="copyPassword()">📋 Copiar contraseña</button>
             </div>
+            <div class="info-box">
+                ✅ Sala creada. Comparte esta contraseña con tu contacto para que pueda unirse.
+            </div>
+            <button class="btn btn-primary" onclick="startHosting()">Continuar →</button>
+            <button class="btn btn-secondary" onclick="goBack()">← Volver</button>
         </div>
     </div>
 
-    <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col h-[720px] relative border border-white/20">
-        
-        <!-- Setup -->
-        <div id="setupScreen" class="p-10 flex flex-col h-full justify-center">
-            <div class="text-center mb-12">
-                <div class="bg-indigo-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-200 rotate-3">
-                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-1.34-1.34c-1.255-2.013-2.315-4.244-3.153-6.611m12.422-3.153C16.009 6.799 15 3.517 15 0m-1.66 1.66c1.255 2.013 2.315 4.244 3.153 6.611M6 11c0 3.517 1.009 6.799 2.753 9.571m1.34-1.34c1.255-2.013-2.315-4.244-3.153-6.611m-12.422-3.153C3.991 6.799 5 3.517 5 0m1.66 1.66c-1.255 2.013-2.315-4.244-3.153-6.611"></path></svg>
-                </div>
-                <h1 class="text-4xl font-black text-slate-900 tracking-tighter">SecureP2P <span class="text-indigo-600 font-mono">v2.5.5</span></h1>
-                <p class="text-slate-400 text-[10px] mt-2 font-black uppercase tracking-[0.3em]">GitHub Pages Edition</p>
+    <!-- Pantalla 4: Unirse a sala -->
+    <div class="container" id="joinScreen" style="display: none;">
+        <div class="header">
+            <h1>🚪 Unirse a Sala</h1>
+            <p>Introduce la contraseña que te compartieron</p>
+        </div>
+        <div class="content">
+            <div class="input-group">
+                <label>Contraseña de la sala</label>
+                <input type="text" id="joinPassword" placeholder="Ej: ABCD" maxlength="4" style="text-transform: uppercase;">
             </div>
+            <button class="btn btn-primary" onclick="joinRoom()">Unirse →</button>
+            <button class="btn btn-secondary" onclick="goBack()">← Volver</button>
+        </div>
+    </div>
 
-            <div class="space-y-6">
-                <div class="space-y-2">
-                    <label class="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">Tu Alias</label>
-                    <input type="text" id="nameInput" maxlength="12" placeholder="Ej: Usuario-01" class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 outline-none transition-all font-bold text-slate-700 shadow-sm">
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4 pt-4">
-                    <button onclick="createRoom()" class="px-6 py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-indigo-200 active:scale-95">Crear Sala</button>
-                    <button onclick="showJoin()" class="px-6 py-5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl font-black uppercase tracking-widest text-xs transition-all border border-slate-200 active:scale-95">Unirse</button>
-                </div>
+    <!-- Pantalla 5: Chat -->
+    <div class="container chat-container" id="chatScreen" style="display: none;">
+        <div class="header">
+            <h1>💬 Chat</h1>
+            <p>Sala: <span id="chatRoomId"></span></p>
+        </div>
+        <div class="status-bar">
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Esperando conexión...</span>
+            </div>
+            <div style="font-size: 12px; color: #6c757d;">
+                🔒 Cifrado E2E
             </div>
         </div>
-
-        <!-- Join -->
-        <div id="joinScreen" class="hidden p-10 flex flex-col h-full justify-center">
-            <button onclick="backToSetup()" class="text-slate-400 hover:text-slate-600 mb-10 flex items-center gap-2 text-xs font-black tracking-widest transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg> VOLVER
-            </button>
-            <h2 class="text-3xl font-black mb-8 tracking-tighter">Conectar</h2>
-            <div class="space-y-8">
-                <div class="space-y-3">
-                    <label class="text-[10px] uppercase font-black text-slate-400 ml-1">ID de Sala</label>
-                    <input type="text" id="joinIdInput" placeholder="XXXXXX-XXXXXX" class="w-full px-6 py-5 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 outline-none uppercase text-sm font-mono font-black tracking-widest shadow-inner bg-slate-50">
-                </div>
-                <button onclick="connectToPeer()" class="w-full px-6 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 transition-all shadow-2xl active:scale-95">Conectar</button>
+        <div class="messages" id="messages">
+            <div class="waiting-message" id="waitingMessage">
+                <div class="spinner"></div>
+                <p><strong>Esperando a que tu contacto se una...</strong></p>
+                <p style="font-size: 14px; margin-top: 10px;">Asegúrate de que tenga la contraseña correcta</p>
             </div>
         </div>
-
-        <!-- Chat -->
-        <div id="chatScreen" class="hidden flex flex-col h-full overflow-hidden">
-            <div class="bg-indigo-600 p-5 text-white flex justify-between items-center shadow-xl relative z-10 border-b border-white/10">
-                <div class="flex items-center gap-4">
-                    <button onclick="location.reload()" class="p-2 hover:bg-white/20 rounded-xl transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                    </button>
-                    <div>
-                        <h2 class="font-black leading-none text-sm uppercase tracking-wider italic" id="displayPeerName">Esperando...</h2>
-                        <span class="text-[9px] opacity-60 font-mono tracking-tighter block mt-1" id="displayRoomId">----</span>
-                    </div>
-                </div>
-                <div class="flex flex-col items-end gap-1.5">
-                    <div class="flex items-center gap-2 text-[9px] bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-lg border border-white/10">
-                        <div id="statusIndicator" class="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-                        <span id="statusText" class="font-black uppercase tracking-tighter">Pendiente</span>
-                    </div>
-                </div>
-            </div>
-
-            <div id="messageContainer" class="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50 relative">
-                <!-- Capa de bloqueo -->
-                <div id="lockedUI" class="absolute inset-0 z-20 bg-slate-50/95 flex items-center justify-center p-10 text-center flex-col">
-                    <div class="p-8 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-w-xs message-in">
-                        <div class="bg-indigo-50 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                        </div>
-                        <p class="text-xs font-black text-slate-900 uppercase tracking-widest mb-3">Canal Bloqueado</p>
-                        <p class="text-[11px] text-slate-500 font-medium leading-relaxed mb-6">Verifica el código SAS con tu contacto antes de continuar.</p>
-                        <button onclick="document.getElementById('sasModal').classList.remove('hidden')" class="px-5 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all active:scale-95">Verificar</button>
-                    </div>
-                </div>
-            </div>
-
-            <input type="file" id="fileInput" class="hidden" onchange="handleFileSelect(this)">
-
-            <div class="p-5 bg-white border-t border-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.04)]">
-                <div id="shareSection" class="mb-5 p-5 bg-slate-950 rounded-3xl border border-slate-800 hidden message-in shadow-2xl">
-                    <p class="text-[10px] text-slate-500 font-black uppercase mb-3 tracking-[0.25em] text-center">Tu ID de Sala</p>
-                    <div class="flex items-center gap-3">
-                        <code class="flex-1 text-[11px] font-mono font-black text-indigo-400 break-all bg-indigo-500/10 px-4 py-3 rounded-2xl border border-indigo-500/20 select-all uppercase" id="shareId">----</code>
-                        <button onclick="copyId()" class="p-3.5 bg-indigo-600 hover:bg-indigo-700 rounded-2xl transition-all text-white shadow-xl active:scale-90">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flex gap-3 items-center">
-                    <button id="fileBtn" disabled onclick="document.getElementById('fileInput').click()" class="p-4 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all disabled:opacity-20 border border-transparent hover:border-indigo-100 active:scale-95">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414a4 4 0 00-5.656-5.656l-6.415 6.414a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                    </button>
-                    <input type="text" id="chatInput" maxlength="800" placeholder="Esperando verificación..." disabled class="flex-1 bg-slate-50 px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-100 text-sm transition-all border border-slate-100 disabled:opacity-50 font-bold text-slate-800">
-                    <button onclick="handleSendMessage()" id="sendBtn" disabled class="p-4 bg-indigo-600 text-white rounded-2xl hover:scale-105 disabled:opacity-20 transition-all shadow-xl shadow-indigo-300 active:scale-95">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                    </button>
-                </div>
-                
-                <div class="flex items-center justify-between mt-5 px-1">
-                    <p class="text-[9px] text-slate-400 font-black flex items-center gap-1.5 uppercase tracking-tighter">
-                        <svg class="w-3 h-3 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg>
-                        AES-256-GCM + ECDH P-256
-                    </p>
-                    <p class="text-[9px] text-slate-400 font-black opacity-40 uppercase tracking-widest">Fixed Edition</p>
-                </div>
-            </div>
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Escribe un mensaje..." disabled>
+            <button onclick="sendMessage()" disabled id="sendButton">Enviar</button>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
-        // --- Configuración ---
-        const MAX_FILE_SIZE = 20 * 1024 * 1024;
-        const CLOCK_SKEW_ALLOWED = 60000;
-        const RATCHET_SALT = "secure_p2p_fixed_v2.5.5";
-        
-        let myPeer, connection, myName, myKeyPairs;
-        let sharedSecretRoot, currentAesKey;
-        let pendingConn = null;
-        let lastReceivedSequence = -1;
-        let currentSendSequence = 0;
-        let activeBlobUrls = [];
-        let isSASVerified = false;
-        let lastSendTime = 0;
-        const processedPackageIds = new Set();
+        let userName = '';
+        let roomId = '';
+        let peer = null;
+        let conn = null;
+        let isHost = false;
 
-        const $ = id => document.getElementById(id);
-
-        const switchScreen = (id) => {
-            ['setupScreen', 'joinScreen', 'chatScreen'].forEach(s => {
-                const el = $(s);
-                if (el) el.classList.add('hidden');
-            });
-            const target = $(id);
-            if (target) target.classList.remove('hidden');
-        };
-
-        // --- Criptografía Corregida ---
-
-        async function generateKeyPair() {
-            return window.crypto.subtle.generateKey(
-                { name: "ECDH", namedCurve: "P-256" },
-                false, ["deriveBits"]  // Solo deriveBits, no deriveKey
-            );
-        }
-
-        async function exportPublicKey(key) {
-            const exported = await window.crypto.subtle.exportKey("spki", key);
-            return btoa(String.fromCharCode(...new Uint8Array(exported)));
-        }
-
-        async function importPublicKey(b64) {
-            try {
-                const binary = atob(b64);
-                const bytes = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                return window.crypto.subtle.importKey(
-                    "spki", bytes, { name: "ECDH", namedCurve: "P-256" }, true, []
-                );
-            } catch (e) { 
-                console.error("Error importando clave:", e);
-                return null; 
-            }
-        }
-
-        // SOLUCIÓN: Derivar AES directamente usando ECDH + HKDF en un solo paso
-        async function deriveAesKey(privateKey, publicKey) {
-            // Paso 1: Derivar bits compartidos del ECDH
-            const sharedBits = await window.crypto.subtle.deriveBits(
-                { name: "ECDH", public: publicKey },
-                privateKey,
-                256
-            );
-            
-            // Paso 2: Usar HKDF para derivar la clave AES directamente
-            // Importamos los bits como material de clave raw para HKDF
-            const hkdfKey = await window.crypto.subtle.importKey(
-                "raw",
-                sharedBits,
-                { name: "HKDF" },
-                false,
-                ["deriveKey"]
-            );
-            
-            const enc = new TextEncoder();
-            const salt = enc.encode(RATCHET_SALT);
-            
-            // Derivamos AES-256-GCM directamente
-            const aesKey = await window.crypto.subtle.deriveKey(
-                {
-                    name: "HKDF",
-                    hash: "SHA-256",
-                    salt: salt,
-                    info: enc.encode("aes_gcm_key")
-                },
-                hkdfKey,
-                { name: "AES-GCM", length: 256 },
-                true,
-                ["encrypt", "decrypt"]
-            );
-            
-            // También derivamos material para el siguiente ratchet step
-            const nextRootMaterial = await window.crypto.subtle.deriveBits(
-                {
-                    name: "HKDF",
-                    hash: "SHA-256",
-                    salt: salt,
-                    info: enc.encode("next_ratchet")
-                },
-                hkdfKey,
-                256
-            );
-            
-            // Importamos el material del siguiente ratchet como HKDF key
-            const nextRootKey = await window.crypto.subtle.importKey(
-                "raw",
-                nextRootMaterial,
-                { name: "HKDF" },
-                false,
-                ["deriveKey"]
-            );
-            
-            return { aes: aesKey, root: nextRootKey };
-        }
-
-        // Ratchet: derivar nueva clave AES desde el material raíz HKDF
-        async function rotateRatchet(rootKey) {
-            const enc = new TextEncoder();
-            const salt = enc.encode(RATCHET_SALT);
-            
-            // Nueva clave AES
-            const aesKey = await window.crypto.subtle.deriveKey(
-                {
-                    name: "HKDF",
-                    hash: "SHA-256",
-                    salt: salt,
-                    info: enc.encode("msg_key")
-                },
-                rootKey,
-                { name: "AES-GCM", length: 256 },
-                true,
-                ["encrypt", "decrypt"]
-            );
-            
-            // Siguiente material raíz
-            const nextRootBits = await window.crypto.subtle.deriveBits(
-                {
-                    name: "HKDF",
-                    hash: "SHA-256",
-                    salt: salt,
-                    info: enc.encode("root_upd")
-                },
-                rootKey,
-                256
-            );
-            
-            const nextRootKey = await window.crypto.subtle.importKey(
-                "raw",
-                nextRootBits,
-                { name: "HKDF" },
-                false,
-                ["deriveKey"]
-            );
-            
-            return { aes: aesKey, root: nextRootKey };
-        }
-
-        async function getSAS(aesKey) {
-            const exported = await window.crypto.subtle.exportKey("raw", aesKey);
-            const hashBuffer = await crypto.subtle.digest("SHA-256", exported);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.slice(0, 4).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-        }
-
-        async function encryptData(data, key) {
-            const iv = window.crypto.getRandomValues(new Uint8Array(12));
-            const encrypted = await window.crypto.subtle.encrypt(
-                { name: "AES-GCM", iv: iv },
-                key,
-                data
-            );
-            return { data: Array.from(new Uint8Array(encrypted)), iv: Array.from(iv) };
-        }
-
-        async function decryptData(package, key) {
-            try {
-                const decrypted = await window.crypto.subtle.decrypt(
-                    { name: "AES-GCM", iv: new Uint8Array(package.iv) },
-                    key,
-                    new Uint8Array(package.data)
-                );
-                return decrypted;
-            } catch (e) { 
-                console.error("Decryption failed:", e);
-                return null; 
-            }
-        }
-
-        // --- Lógica de Sesión ---
-
-        async function confirmSAS() {
-            isSASVerified = true;
-            const sasModal = $('sasModal');
-            const lockedUI = $('lockedUI');
-            const chatInput = $('chatInput');
-            
-            if (sasModal) sasModal.classList.add('hidden');
-            if (lockedUI) lockedUI.classList.add('hidden');
-            if (chatInput) {
-                chatInput.disabled = false;
-                chatInput.placeholder = "Escribe mensaje seguro...";
-                chatInput.focus();
-            }
-            
-            const sendBtn = $('sendBtn');
-            const fileBtn = $('fileBtn');
-            if (sendBtn) sendBtn.disabled = false;
-            if (fileBtn) fileBtn.disabled = false;
-            
-            const indicator = $('statusIndicator');
-            const text = $('statusText');
-            if (indicator) {
-                indicator.className = 'w-1.5 h-1.5 rounded-full bg-green-500';
-                indicator.style.boxShadow = '0 0 10px rgba(34, 197, 94, 0.6)';
-            }
-            if (text) text.textContent = 'Seguro';
-            
-            systemLog("SAS Verificado • Canal Activo", "text-green-600");
-        }
-
-        function abortConnection() {
-            cleanupMemory();
-            location.reload();
-        }
-
-        function securityFault(msg) {
-            const alertEl = $('customAlert');
-            const alertMsg = $('alertMsg');
-            if (alertMsg) alertMsg.textContent = msg;
-            if (alertEl) {
-                alertEl.classList.remove('hidden');
-                alertEl.style.display = 'flex';
-            }
-            cleanupMemory();
-        }
-
-        // --- Chat y Archivos ---
-
-        async function handleFileSelect(input) {
-            const file = input.files[0];
-            if (!file || !currentAesKey || !isSASVerified) return;
-
-            if (file.size > MAX_FILE_SIZE) {
-                securityFault("Archivo excede límite de seguridad (20MB)");
-                input.value = '';
+        // Pantalla 1: Establecer nombre
+        function setName() {
+            const name = document.getElementById('nameInput').value.trim();
+            if (!name) {
+                alert('Por favor ingresa tu nombre');
                 return;
             }
-            
-            systemLog(`Procesando archivo...`, "text-indigo-400");
-            
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const now = Date.now();
-                    const encryptedFile = await encryptData(e.target.result, currentAesKey);
-                    const meta = JSON.stringify({ 
-                        name: file.name, type: file.type, ts: now, size: file.size,
-                        seq: currentSendSequence++, uid: window.crypto.randomUUID()
-                    });
-                    const encryptedMeta = await encryptData(new TextEncoder().encode(meta), currentAesKey);
-                    
-                    if (connection && connection.open) {
-                        connection.send({ type: 'file', meta: encryptedMeta, payload: encryptedFile });
-                        await advanceRatchet();
-                        addFileMessage(file.name, file.size, 'sent', '', null, new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-                    }
-                    input.value = '';
-                } catch (err) {
-                    console.error("File send error:", err);
-                    systemLog("Error al enviar archivo", "text-red-500");
-                }
-            };
-            reader.onerror = () => {
-                systemLog("Error leyendo archivo", "text-red-500");
-            };
-            reader.readAsArrayBuffer(file);
+            userName = name;
+            document.getElementById('userName').textContent = userName;
+            showScreen('choiceScreen');
         }
 
-        function addFileMessage(name, size, type, sender = '', blobUrl = null, time = '') {
-            const container = $('messageContainer');
-            if (!container) return;
-            
-            const div = document.createElement('div');
-            div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} message-in`;
-            const inner = document.createElement('div');
-            inner.className = `max-w-[85%] p-4 rounded-3xl shadow-md border ${
-                type === 'sent' ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none' : 'bg-white border-slate-100 text-slate-800 rounded-tl-none'
-            }`;
-            
-            if (sender && type === 'received') {
-                const s = document.createElement('div');
-                s.className = 'text-[9px] font-black opacity-50 mb-1 uppercase tracking-tighter';
-                s.textContent = sender;
-                inner.appendChild(s);
-            }
-            
-            const formattedSize = (size / 1024 / 1024).toFixed(2) + ' MB';
-            inner.innerHTML += `
-                <div class="flex items-center gap-3">
-                    <div class="bg-black/10 p-2 rounded-xl">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="font-bold text-xs truncate">${name}</div>
-                        <div class="text-[9px] opacity-60">${formattedSize}</div>
-                    </div>
-                    ${blobUrl ? `<a href="${blobUrl}" download="${name}" class="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></a>` : ''}
-                </div>`;
-            
-            if (time) {
-                const timeNode = document.createElement('div');
-                timeNode.className = `text-[9px] opacity-40 mt-2 font-bold ${type === 'sent' ? 'text-right' : 'text-left'}`;
-                timeNode.textContent = time;
-                inner.appendChild(timeNode);
-            }
-            
-            div.appendChild(inner);
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
+        // Pantalla 2: Mostrar opciones
+        function showCreateRoom() {
+            const password = generatePassword();
+            roomId = password;
+            document.getElementById('roomPassword').textContent = password;
+            showScreen('createScreen');
         }
 
-        const addMessage = (text, type, sender = '', time = '') => {
-            const container = $('messageContainer');
-            if (!container) return;
-            
-            const div = document.createElement('div');
-            div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} message-in`;
-            const inner = document.createElement('div');
-            inner.className = `max-w-[85%] p-4 rounded-3xl shadow-md border ${
-                type === 'sent' ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none' : 'bg-white border-slate-100 text-slate-800 rounded-tl-none'
-            }`;
-            
-            if (sender && type === 'received') {
-                const s = document.createElement('div');
-                s.className = 'text-[9px] font-black opacity-50 mb-1 uppercase tracking-tighter';
-                s.textContent = sender;
-                inner.appendChild(s);
+        function showJoinRoom() {
+            showScreen('joinScreen');
+        }
+
+        // Generar contraseña de 4 caracteres
+        function generatePassword() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 4; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
             }
-            
-            const textNode = document.createElement('div');
-            textNode.className = "break-words whitespace-pre-wrap font-bold text-sm leading-relaxed";
-            textNode.textContent = text;
-            inner.appendChild(textNode);
-            
-            if (time) {
-                const timeNode = document.createElement('div');
-                timeNode.className = `text-[9px] opacity-40 mt-1.5 font-bold ${type === 'sent' ? 'text-right' : 'text-left'}`;
-                timeNode.textContent = time;
-                inner.appendChild(timeNode);
-            }
-            
-            div.appendChild(inner);
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-        };
+            return result;
+        }
 
-        const systemLog = (msg, color = 'text-slate-400') => {
-            const container = $('messageContainer');
-            if (!container) return;
-            
-            const div = document.createElement('div');
-            div.className = `text-[9px] text-center ${color} my-6 uppercase tracking-[0.3em] font-black px-10 leading-relaxed`;
-            div.textContent = msg;
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-        };
-
-        // --- PeerJS ---
-
-        const setupConnection = (conn) => {
-            connection = conn;
-            
-            conn.on('open', () => {
-                console.log("Connection opened");
+        // Copiar contraseña
+        function copyPassword() {
+            const password = document.getElementById('roomPassword').textContent;
+            navigator.clipboard.writeText(password).then(() => {
+                alert('✅ Contraseña copiada: ' + password);
             });
-            
-            conn.on('data', async (raw) => {
-                if (!raw || typeof raw !== 'object') return;
+        }
 
-                try {
-                    if (raw.type === 'handshake' || raw.type === 'handshake_ack') {
-                        const remotePubKey = await importPublicKey(raw.pubKey);
-                        if (!remotePubKey) {
-                            console.error("Invalid public key");
-                            return;
-                        }
-                        
-                        if (!myKeyPairs && raw.type === 'handshake') {
-                            myKeyPairs = await generateKeyPair();
-                            const myPub = await exportPublicKey(myKeyPairs.publicKey);
-                            conn.send({ type: 'handshake_ack', pubKey: myPub, name: myName });
-                        }
-                        
-                        // USAR LA NUEVA FUNCIÓN deriveAesKey
-                        const result = await deriveAesKey(myKeyPairs.privateKey, remotePubKey);
-                        currentAesKey = result.aes;
-                        sharedSecretRoot = result.root;
-                        
-                        const sas = await getSAS(currentAesKey);
-                        showVerification(sas, raw.name);
-                    }
-                    
-                    if (raw.type === 'chat') {
-                        if (!isSASVerified || !currentAesKey) return;
-                        
-                        const decrypted = await decryptData(raw.payload, currentAesKey);
-                        if (!decrypted) {
-                            console.warn("Failed to decrypt message");
-                            return;
-                        }
-                        
-                        const decoded = JSON.parse(new TextDecoder().decode(decrypted));
-                        
-                        if (decoded.seq <= lastReceivedSequence || processedPackageIds.has(decoded.uid)) {
-                            console.warn("Replay attack detected");
-                            return;
-                        }
-                        
-                        processedPackageIds.add(decoded.uid);
-                        lastReceivedSequence = decoded.seq;
-                        
-                        await advanceRatchet();
-                        const timeStr = new Date(decoded.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        addMessage(decoded.text, 'received', conn.metadata?.name || "Contacto", timeStr);
-                    }
+        // Iniciar como host
+        function startHosting() {
+            isHost = true;
+            document.getElementById('chatRoomId').textContent = roomId;
+            showScreen('chatScreen');
+            initPeer(roomId);
+        }
 
-                    if (raw.type === 'file') {
-                        if (!isSASVerified || !currentAesKey) return;
-                        
-                        const decryptedMeta = await decryptData(raw.meta, currentAesKey);
-                        if (!decryptedMeta) return;
-                        
-                        const meta = JSON.parse(new TextDecoder().decode(decryptedMeta));
-                        
-                        if (meta.size > MAX_FILE_SIZE || meta.seq <= lastReceivedSequence || processedPackageIds.has(meta.uid)) {
-                            console.warn("Invalid file metadata");
-                            return;
-                        }
-                        
-                        processedPackageIds.add(meta.uid);
-                        lastReceivedSequence = meta.seq;
-                        
-                        const decryptedFile = await decryptData(raw.payload, currentAesKey);
-                        if (!decryptedFile) return;
-                        
-                        const blob = new Blob([decryptedFile], { type: meta.type });
-                        const blobUrl = URL.createObjectURL(blob);
-                        activeBlobUrls.push(blobUrl);
-                        
-                        if (activeBlobUrls.length > 3) {
-                            const oldUrl = activeBlobUrls.shift();
-                            URL.revokeObjectURL(oldUrl);
-                        }
-                        
-                        await advanceRatchet();
-                        const timeStr = new Date(meta.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        addFileMessage(meta.name, meta.size, 'received', conn.metadata?.name || "Contacto", blobUrl, timeStr);
-                    }
-                } catch (err) {
-                    console.error("Error processing message:", err);
+        // Unirse a sala
+        function joinRoom() {
+            const password = document.getElementById('joinPassword').value.trim().toUpperCase();
+            if (!password || password.length !== 4) {
+                alert('Por favor ingresa una contraseña válida de 4 caracteres');
+                return;
+            }
+            isHost = false;
+            roomId = password;
+            document.getElementById('chatRoomId').textContent = roomId;
+            showScreen('chatScreen');
+            initPeer(null, password);
+        }
+
+        // Inicializar PeerJS
+        function initPeer(id, connectTo) {
+            // Usar servidor público de PeerJS
+            peer = new Peer(id, {
+                host: '0.peerjs.com',
+                secure: true,
+                port: 443,
+                debug: 2
+            });
+
+            peer.on('open', (peerId) => {
+                console.log('Mi Peer ID:', peerId);
+                addSystemMessage('✅ Conectado al servidor');
+                
+                if (connectTo) {
+                    // Cliente: conectar al host
+                    setTimeout(() => {
+                        connectToPeer(connectTo);
+                    }, 1000);
+                } else {
+                    // Host: esperar conexión
+                    addSystemMessage('⏳ Esperando a que alguien se una...');
+                }
+            });
+
+            peer.on('connection', (connection) => {
+                console.log('✅ Alguien se está conectando...');
+                setupConnection(connection);
+            });
+
+            peer.on('error', (err) => {
+                console.error('❌ Error de Peer:', err);
+                if (err.type === 'peer-unavailable') {
+                    addSystemMessage('❌ No se pudo encontrar la sala. Verifica la contraseña.');
+                } else if (err.type === 'unavailable-id') {
+                    addSystemMessage('❌ Esta sala ya existe. Prueba con otra contraseña.');
+                } else {
+                    addSystemMessage('❌ Error: ' + err.type);
+                }
+            });
+
+            peer.on('disconnected', () => {
+                console.log('⚠️ Desconectado del servidor');
+                addSystemMessage('⚠️ Desconectado del servidor. Intentando reconectar...');
+                peer.reconnect();
+            });
+        }
+
+        // Conectar a otro peer
+        function connectToPeer(peerId) {
+            console.log('Conectando a:', peerId);
+            addSystemMessage('⏳ Conectando a la sala...');
+            conn = peer.connect(peerId, {
+                reliable: true,
+                serialization: 'json'
+            });
+            setupConnection(conn);
+        }
+
+        // Configurar conexión
+        function setupConnection(connection) {
+            conn = connection;
+
+            conn.on('open', () => {
+                console.log('✅ Conexión P2P establecida');
+                document.getElementById('waitingMessage').style.display = 'none';
+                document.getElementById('statusDot').classList.add('connected');
+                document.getElementById('statusText').textContent = 'Conectado';
+                document.getElementById('messageInput').disabled = false;
+                document.getElementById('sendButton').disabled = false;
+                
+                addSystemMessage('🎉 ¡Conectado! Ya puedes chatear de forma segura.');
+                
+                // Enviar mensaje de bienvenida
+                conn.send({
+                    type: 'join',
+                    name: userName,
+                    time: new Date().toLocaleTimeString()
+                });
+            });
+
+            conn.on('data', (data) => {
+                console.log('📨 Mensaje recibido:', data);
+                if (data.type === 'join') {
+                    addSystemMessage('👤 ' + data.name + ' se ha unido al chat');
+                } else if (data.type === 'message') {
+                    addMessage(data.text, 'received', data.name, data.time);
                 }
             });
 
             conn.on('close', () => {
-                systemLog("Conexión cerrada", "text-red-500");
-                cleanupMemory();
-                setTimeout(() => location.reload(), 2000);
+                console.log('❌ Conexión cerrada');
+                document.getElementById('statusDot').classList.remove('connected');
+                document.getElementById('statusText').textContent = 'Desconectado';
+                document.getElementById('messageInput').disabled = true;
+                document.getElementById('sendButton').disabled = true;
+                addSystemMessage('❌ Tu contacto se ha desconectado');
             });
-            
+
             conn.on('error', (err) => {
-                console.error("Connection error:", err);
+                console.error('❌ Error en conexión:', err);
+                addSystemMessage('❌ Error en la conexión: ' + err);
             });
-        };
-
-        async function advanceRatchet() {
-            if (!sharedSecretRoot) return;
-            try {
-                const r = await rotateRatchet(sharedSecretRoot);
-                currentAesKey = r.aes;
-                sharedSecretRoot = r.root;
-            } catch (err) {
-                console.error("Ratchet error:", err);
-            }
         }
 
-        function showVerification(sas, peerName) {
-            const sasDisplay = $('sasDisplay');
-            if (sasDisplay) sasDisplay.textContent = sas;
+        // Enviar mensaje
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
             
-            const displayPeerName = $('displayPeerName');
-            if (displayPeerName) displayPeerName.textContent = peerName || "Contacto";
-            
-            const sasModal = $('sasModal');
-            if (sasModal) {
-                sasModal.classList.remove('hidden');
-                sasModal.style.display = 'flex';
-            }
-            
-            const displayRoomId = $('displayRoomId');
-            if (displayRoomId && connection) {
-                displayRoomId.textContent = `ROOM: ${connection.peer}`;
-            }
-        }
+            if (!text || !conn) return;
 
-        function cleanupMemory() {
-            activeBlobUrls.forEach(url => URL.revokeObjectURL(url));
-            activeBlobUrls = [];
-            currentAesKey = null; 
-            sharedSecretRoot = null;
-            myKeyPairs = null;
-            isSASVerified = false;
-            if (connection) {
-                try { connection.close(); } catch(e) {}
-            }
-            if (myPeer) {
-                try { myPeer.destroy(); } catch(e) {}
-            }
-        }
-
-        window.createRoom = () => {
-            const nameInput = $('nameInput');
-            const name = nameInput ? nameInput.value.trim() : '';
-            if (!name) return;
-            myName = name;
-            switchScreen('chatScreen');
-            initPeer(generateSecureID());
-        };
-
-        window.showJoin = () => {
-            const nameInput = $('nameInput');
-            if (!nameInput || !nameInput.value.trim()) return;
-            switchScreen('joinScreen');
-        };
-
-        const initPeer = (id) => {
-            const config = {
-                debug: 2,
-                host: '0.peerjs.com',
-                port: 443,
-                secure: true,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' }
-                    ]
-                }
+            const message = {
+                type: 'message',
+                text: text,
+                name: userName,
+                time: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
             };
-            
-            if (id) config.peerId = id;
-            
-            myPeer = new Peer(id, config);
-            
-            myPeer.on('open', (openedId) => {
-                console.log("Peer opened:", openedId);
-                const shareId = $('shareId');
-                const shareSection = $('shareSection');
-                
-                if (shareId) shareId.textContent = openedId;
-                if (shareSection && id) shareSection.classList.remove('hidden');
-            });
-            
-            myPeer.on('connection', (conn) => {
-                console.log("Incoming connection");
-                pendingConn = conn;
-                const reqModal = $('requestModal');
-                if (reqModal) {
-                    reqModal.classList.remove('hidden');
-                    reqModal.style.display = 'flex';
-                }
-            });
-            
-            myPeer.on('error', (err) => {
-                console.error("Peer error:", err);
-                if (err.type !== 'peer-unavailable') {
-                    securityFault(`Error de red: ${err.message || err.type}`);
-                }
-            });
-        };
 
-        window.connectToPeer = async () => {
-            const joinIdInput = $('joinIdInput');
-            const targetId = joinIdInput ? joinIdInput.value.trim().toUpperCase() : '';
-            if (!targetId) return;
-            
-            const nameInput = $('nameInput');
-            myName = nameInput ? nameInput.value.trim() : 'Anónimo';
-            
-            switchScreen('chatScreen');
-            
-            const config = {
-                debug: 2,
-                host: '0.peerjs.com',
-                port: 443,
-                secure: true
-            };
-            
-            myPeer = new Peer(null, config);
-            
-            myPeer.on('open', () => {
-                console.log("Peer ready for connection");
-                const conn = myPeer.connect(targetId, { 
-                    reliable: true,
-                    metadata: { name: myName }
+            conn.send(message);
+            addMessage(text, 'sent', userName, message.time);
+            input.value = '';
+        }
+
+        // Enter para enviar
+        document.addEventListener('DOMContentLoaded', () => {
+            const nameInput = document.getElementById('nameInput');
+            if (nameInput) {
+                nameInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') setName();
                 });
-                setupConnection(conn);
-                systemLog("Conectando...", "text-indigo-400");
-            });
-            
-            myPeer.on('error', (err) => {
-                console.error("Connection error:", err);
-                securityFault(`Error: ${err.message || err.type}`);
-            });
-        };
-
-        window.respondToRequest = async (accept) => {
-            const reqModal = $('requestModal');
-            if (reqModal) {
-                reqModal.classList.add('hidden');
-                reqModal.style.display = 'none';
             }
             
-            if (accept && pendingConn) {
-                try {
-                    myKeyPairs = await generateKeyPair();
-                    const myPub = await exportPublicKey(myKeyPairs.publicKey);
-                    setupConnection(pendingConn);
-                    pendingConn.send({ type: 'handshake', pubKey: myPub, name: myName });
-                } catch (err) {
-                    console.error("Handshake error:", err);
-                    securityFault("Error en handshake");
-                }
-            } else if (pendingConn) {
-                pendingConn.close();
+            const joinPasswordInput = document.getElementById('joinPassword');
+            if (joinPasswordInput) {
+                joinPasswordInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') joinRoom();
+                });
             }
-        };
-
-        window.handleSendMessage = async () => {
-            const chatInput = $('chatInput');
-            const text = chatInput ? chatInput.value.trim() : '';
             
-            if (!text || !connection || !currentAesKey || !isSASVerified) return;
+            const messageInput = document.getElementById('messageInput');
+            if (messageInput) {
+                messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') sendMessage();
+                });
+            }
+        });
+
+        // Añadir mensaje a la interfaz
+        function addMessage(text, type, sender, time) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
             
-            const now = Date.now();
-            if (now - lastSendTime < 500) return;
-            lastSendTime = now;
+            let senderHtml = '';
+            if (type === 'received') {
+                senderHtml = `<div class="message-sender">${escapeHtml(sender)}</div>`;
+            }
             
-            try {
-                const payload = new TextEncoder().encode(JSON.stringify({ 
-                    text: text, ts: now, seq: currentSendSequence++, 
-                    uid: window.crypto.randomUUID()
-                }));
-                
-                const encrypted = await encryptData(payload, currentAesKey);
-                connection.send({ type: 'chat', payload: encrypted });
-                
-                await advanceRatchet();
-                addMessage(text, 'sent', '', new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-                
-                if (chatInput) chatInput.value = '';
-            } catch (err) {
-                console.error("Send error:", err);
-                systemLog("Error al enviar", "text-red-500");
-            }
-        };
-
-        window.copyId = () => { 
-            const shareId = $('shareId');
-            const id = shareId ? shareId.textContent : '';
-            if (id) {
-                navigator.clipboard.writeText(id); 
-                systemLog("ID copiado al portapapeles"); 
-            }
-        };
-        
-        window.backToSetup = () => {
-            cleanupMemory();
-            switchScreen('setupScreen');
-        };
-
-        const generateSecureID = () => {
-            const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
-            const array = new Uint8Array(12);
-            window.crypto.getRandomValues(array);
-            let result = "";
-            for (let i = 0; i < array.length; i++) {
-                if (i === 6) result += "-";
-                result += charset[array[i] % charset.length];
-            }
-            return result;
-        };
-
-        // Event listeners
-        const chatInput = $('chatInput');
-        if (chatInput) {
-            chatInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') handleSendMessage();
-            });
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    ${senderHtml}
+                    <div class="message-text">${escapeHtml(text)}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
-        
-        window.addEventListener('beforeunload', cleanupMemory);
+
+        // Añadir mensaje del sistema
+        function addSystemMessage(text) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'system-message';
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Escapar HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Cambiar pantalla
+        function showScreen(screenId) {
+            document.querySelectorAll('.container').forEach(container => {
+                container.style.display = 'none';
+            });
+            document.getElementById(screenId).style.display = 'block';
+        }
+
+        // Volver
+        function goBack() {
+            if (peer) {
+                peer.destroy();
+                peer = null;
+            }
+            if (conn) {
+                conn.close();
+                conn = null;
+            }
+            showScreen('choiceScreen');
+        }
     </script>
 </body>
 </html>
