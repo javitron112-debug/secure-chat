@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- CSP Actualizado: Se añade cdn.jsdelivr.net a connect-src y se permite mayor compatibilidad con extensiones de red/antivirus -->
+    <!-- CSP Corregido: Permite cdn.jsdelivr.net para archivos .map y scripts de depuración -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: blob:; connect-src 'self' https://cdn.jsdelivr.net wss://*.peerjs.com https://*.peerjs.com wss://0.peerjs.com;">
-    <title>SecureP2P v2.5.1 - Cyber-Hardened</title>
+    <title>SecureP2P v2.5.2 - Cyber-Hardened</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .message-in { animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -67,7 +67,7 @@
                 <div class="bg-indigo-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-200 rotate-3">
                     <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-1.34-1.34c-1.255-2.013-2.315-4.244-3.153-6.611m12.422-3.153C16.009 6.799 15 3.517 15 0m-1.66 1.66c1.255 2.013 2.315 4.244 3.153 6.611M6 11c0 3.517 1.009 6.799 2.753 9.571m1.34-1.34c1.255-2.013-2.315-4.244-3.153-6.611m-12.422-3.153C3.991 6.799 5 3.517 5 0m1.66 1.66c-1.255 2.013-2.315 4.244-3.153 6.611"></path></svg>
                 </div>
-                <h1 class="text-4xl font-black text-slate-900 tracking-tighter text-balance">SecureP2P <span class="text-indigo-600 font-mono">v2.5.1</span></h1>
+                <h1 class="text-4xl font-black text-slate-900 tracking-tighter text-balance">SecureP2P <span class="text-indigo-600 font-mono">v2.5.2</span></h1>
                 <p class="text-slate-400 text-[10px] mt-2 font-black uppercase tracking-[0.3em]">Hardened Private Messenger</p>
             </div>
 
@@ -121,7 +121,7 @@
             </div>
 
             <div id="messageContainer" class="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50 relative">
-                <!-- Capa de Cuarentena (Corregida con botón de acción) -->
+                <!-- Capa de Cuarentena -->
                 <div id="lockedUI" class="absolute inset-0 z-20 bg-slate-50/95 flex items-center justify-center p-10 text-center flex-col">
                     <div class="p-8 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-w-xs message-in">
                         <div class="bg-indigo-50 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -139,7 +139,7 @@
             <div class="p-5 bg-white border-t border-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.04)]">
                 <!-- Panel de Identificador -->
                 <div id="shareSection" class="mb-5 p-5 bg-slate-950 rounded-3xl border border-slate-800 hidden message-in shadow-2xl">
-                    <p class="text-[10px] text-slate-500 font-black uppercase mb-3 tracking-[0.25em] text-center">ID Público de Sala</p>
+                    <p class="text-[10px] text-slate-500 font-black uppercase mb-3 tracking-[0.25em] text-center">Identificador Público de Sala</p>
                     <div class="flex items-center gap-3">
                         <code class="flex-1 text-[11px] font-mono font-black text-indigo-400 break-all bg-indigo-500/10 px-4 py-3 rounded-2xl border border-indigo-500/20 select-all uppercase" id="shareId">----</code>
                         <button onclick="copyId()" class="p-3.5 bg-indigo-600 hover:bg-indigo-700 rounded-2xl transition-all text-white shadow-xl shadow-indigo-500/40 active:scale-90">
@@ -165,7 +165,7 @@
                             AES-256-GCM Ratchet
                         </p>
                     </div>
-                    <p class="text-[9px] text-slate-400 font-black opacity-40 uppercase tracking-widest">Secure Messenger v2.5.1</p>
+                    <p class="text-[9px] text-slate-400 font-black opacity-40 uppercase tracking-widest">Secure Messenger v2.5.2</p>
                 </div>
             </div>
         </div>
@@ -175,8 +175,8 @@
     <script>
         // --- Configuración y Estado ---
         const MAX_FILE_SIZE = 20 * 1024 * 1024;
-        const CLOCK_SKEW_ALLOWED = 60000; // Aumentado a 1 min para mejor tolerancia
-        const RATCHET_SALT = "secure_p2p_ultimate_v2.5.1";
+        const CLOCK_SKEW_ALLOWED = 60000;
+        const RATCHET_SALT = "secure_p2p_ultimate_v2.5.2";
         
         let myPeer, connection, myName, myKeyPairs;
         let sharedSecretRoot, currentAesKey;
@@ -191,8 +191,12 @@
         const $ = id => document.getElementById(id);
 
         const switchScreen = (id) => {
-            ['setupScreen', 'joinScreen', 'chatScreen'].forEach(s => $(s).classList.add('hidden'));
-            $(id).classList.remove('hidden');
+            ['setupScreen', 'joinScreen', 'chatScreen'].forEach(s => {
+                const el = $(s);
+                if (el) el.classList.add('hidden');
+            });
+            const target = $(id);
+            if (target) target.classList.remove('hidden');
         };
 
         // --- Núcleo Criptográfico ---
@@ -282,10 +286,17 @@
 
         async function confirmSAS() {
             isSASVerified = true;
-            $('sasModal').classList.add('hidden');
-            $('lockedUI').classList.add('hidden');
-            $('chatInput').disabled = false;
-            $('chatInput').placeholder = "Mensaje cifrado...";
+            const sasModal = $('sasModal');
+            const lockedUI = $('lockedUI');
+            const chatInput = $('chatInput');
+            
+            if (sasModal) sasModal.classList.add('hidden');
+            if (lockedUI) lockedUI.classList.add('hidden');
+            if (chatInput) {
+                chatInput.disabled = false;
+                chatInput.placeholder = "Mensaje cifrado...";
+            }
+            
             $('sendBtn').disabled = false;
             $('fileBtn').disabled = false;
             $('statusIndicator').className = 'w-1.5 h-1.5 rounded-full bg-green-500 sas-badge';
@@ -294,8 +305,10 @@
         }
 
         function securityFault(msg) {
-            $('alertMsg').textContent = msg;
-            $('customAlert').classList.remove('hidden').classList.add('flex');
+            const alertEl = $('customAlert');
+            const alertMsg = $('alertMsg');
+            if (alertMsg) alertMsg.textContent = msg;
+            if (alertEl) alertEl.classList.remove('hidden');
             cleanupMemory();
         }
 
@@ -468,7 +481,8 @@
         function showVerification(sas, peerName) {
             $('sasDisplay').textContent = sas;
             $('displayPeerName').textContent = peerName || "Contacto";
-            $('sasModal').classList.remove('hidden');
+            const sasModal = $('sasModal');
+            if (sasModal) sasModal.classList.remove('hidden');
             $('displayRoomId').textContent = `ID SALA: ${connection.peer}`;
         }
 
@@ -498,11 +512,16 @@
             myPeer = new Peer(id, { debug: 1 });
             myPeer.on('open', (openedId) => {
                 $('shareId').textContent = openedId;
-                if (id) $('shareSection').classList.remove('hidden');
+                const shareSec = $('shareSection');
+                if (id && shareSec) shareSec.classList.remove('hidden');
             });
             myPeer.on('connection', async (conn) => {
                 pendingConn = conn;
-                $('requestModal').classList.remove('hidden').classList.add('flex');
+                const reqModal = $('requestModal');
+                if (reqModal) {
+                    reqModal.classList.remove('hidden');
+                    reqModal.classList.add('flex');
+                }
             });
             myPeer.on('error', (err) => {
                 if(err.type !== 'peer-unavailable') console.error(err);
@@ -523,7 +542,11 @@
         };
 
         window.respondToRequest = async (accept) => {
-            $('requestModal').classList.add('hidden').classList.remove('flex');
+            const reqModal = $('requestModal');
+            if (reqModal) {
+                reqModal.classList.add('hidden');
+                reqModal.classList.remove('flex');
+            }
             if (accept && pendingConn) {
                 myKeyPairs = await generateKeyPair();
                 const myPub = await exportPublicKey(myKeyPairs.publicKey);
