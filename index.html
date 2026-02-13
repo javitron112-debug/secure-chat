@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src * wss: https:;">
-    <title>SecureP2P v2.6.1 - Extractable Fix</title>
+    <title>SecureP2P v2.7 - Audio & Files</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .message-in { animation: slideUp 0.3s ease-out; }
@@ -12,6 +12,8 @@
         .sas-pulse { animation: pulse 2s infinite; box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
         @keyframes pulse { 70% { box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); } }
         .hidden { display: none !important; }
+        .sound-on { color: #6366f1; }
+        .sound-off { color: #94a3b8; }
     </style>
 </head>
 <body class="bg-slate-950 min-h-screen flex items-center justify-center p-4 font-sans text-slate-900">
@@ -54,11 +56,34 @@
     <!-- UI Principal -->
     <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[600px]">
         
-        <!-- Setup -->
+        <!-- Header con control de sonido -->
+        <div class="bg-indigo-600 p-3 text-white flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <button onclick="location.reload()" class="p-2 hover:bg-white/20 rounded-lg">←</button>
+                <div>
+                    <h2 class="font-bold text-sm" id="displayPeerName">SecureP2P</h2>
+                    <span class="text-xs opacity-60 font-mono" id="displayRoomId">v2.7</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <!-- Botón de sonido -->
+                <button onclick="toggleSound()" id="soundBtn" class="p-2 hover:bg-white/20 rounded-lg transition-all" title="Activar/Desactivar sonido">
+                    <svg id="soundIconOn" class="w-5 h-5 sound-on" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                    </svg>
+                    <svg id="soundIconOff" class="w-5 h-5 sound-off hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                    </svg>
+                </button>
+                <span class="text-xs font-bold bg-black/30 px-2 py-1 rounded" id="statusText">Inicio</span>
+            </div>
+        </div>
+
+        <!-- Setup Screen -->
         <div id="setupScreen" class="p-8 flex flex-col h-full justify-center">
             <div class="text-center mb-8">
-                <h1 class="text-3xl font-black">SecureP2P <span class="text-indigo-600">v2.6.1</span></h1>
-                <p class="text-slate-400 text-sm mt-2">Con verificación SAS</p>
+                <h1 class="text-3xl font-black">SecureP2P <span class="text-indigo-600">v2.7</span></h1>
+                <p class="text-slate-400 text-sm mt-2">Mensajes, archivos y notificaciones</p>
             </div>
             <input type="text" id="nameInput" placeholder="Tu nombre" class="w-full px-4 py-3 rounded-xl border-2 mb-4 font-bold">
             <div class="grid grid-cols-2 gap-3">
@@ -67,30 +92,55 @@
             </div>
         </div>
 
-        <!-- Join -->
+        <!-- Join Screen -->
         <div id="joinScreen" class="hidden p-8 flex flex-col h-full justify-center">
             <button onclick="switchScreen('setupScreen')" class="text-left text-slate-400 mb-4">← Volver</button>
-            <h2 class="text-2xl font-black mb-4">Unirse</h2>
+            <h2 class="text-2xl font-black mb-4">Unirse a Sala</h2>
             <input type="text" id="joinIdInput" placeholder="XXXXXX-XXXXXX" class="w-full px-4 py-3 rounded-xl border-2 mb-4 font-mono uppercase font-bold">
             <button onclick="connectToPeer()" class="py-3 bg-indigo-600 text-white rounded-xl font-bold">Conectar</button>
         </div>
 
-        <!-- Chat -->
+        <!-- Chat Screen -->
         <div id="chatScreen" class="hidden flex flex-col h-full">
-            <div class="bg-indigo-600 p-4 text-white flex justify-between items-center">
-                <span class="font-bold" id="displayPeerName">...</span>
-                <span class="text-xs bg-black/30 px-2 py-1 rounded" id="statusText">Pendiente</span>
-            </div>
             <div id="messageContainer" class="flex-1 overflow-y-auto p-4 bg-slate-50"></div>
-            <div class="p-4 bg-white border-t flex gap-2">
-                <input type="text" id="chatInput" disabled placeholder="Verifica SAS primero..." class="flex-1 bg-slate-100 px-4 py-2 rounded-xl disabled:opacity-50 font-bold">
-                <button onclick="handleSendMessage()" disabled id="sendBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-xl disabled:opacity-50 font-bold">Enviar</button>
+            
+            <!-- Input area -->
+            <div class="p-4 bg-white border-t">
+                <!-- Share ID -->
+                <div id="shareSection" class="mb-3 p-3 bg-slate-900 rounded-xl hidden">
+                    <p class="text-xs text-slate-400 font-bold uppercase text-center mb-2">Tu ID de Sala</p>
+                    <div class="flex gap-2">
+                        <code class="flex-1 text-xs font-mono text-indigo-400 bg-indigo-500/10 p-2 rounded break-all" id="shareId">----</code>
+                        <button onclick="copyId()" class="px-3 bg-indigo-600 text-white rounded font-bold text-xs">📋</button>
+                    </div>
+                </div>
+
+                <!-- File input hidden -->
+                <input type="file" id="fileInput" class="hidden" onchange="handleFileSelect(this)">
+
+                <!-- Message input -->
+                <div class="flex gap-2">
+                    <button onclick="document.getElementById('fileInput').click()" id="fileBtn" disabled class="p-3 text-slate-400 disabled:opacity-20 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Enviar archivo">
+                        📎
+                    </button>
+                    <input type="text" id="chatInput" disabled placeholder="Verifica SAS primero..." class="flex-1 bg-slate-100 px-4 py-3 rounded-xl outline-none disabled:opacity-50 font-bold">
+                    <button onclick="handleSendMessage()" id="sendBtn" disabled class="px-4 py-3 bg-indigo-600 text-white rounded-xl disabled:opacity-50 font-bold">Enviar</button>
+                </div>
+                <p class="text-xs text-slate-400 mt-2 text-center">Máx. 20MB por archivo</p>
             </div>
         </div>
     </div>
 
+    <!-- Audio para notificaciones -->
+    <audio id="messageSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE" type="audio/wav">
+    </audio>
+
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
+        // ========== CONFIGURACIÓN ==========
+        const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+        
         // ========== ESTADO ==========
         let myPeer = null;
         let connection = null;
@@ -98,21 +148,61 @@
         let myKeyPairs = null;
         let currentAesKey = null;
         let isSASVerified = false;
+        let soundEnabled = true;
         const processedIds = new Set();
 
         const $ = id => document.getElementById(id);
 
+        // ========== UTILIDADES ==========
         function switchScreen(id) {
             ['setupScreen', 'joinScreen', 'chatScreen'].forEach(s => $(s)?.classList.add('hidden'));
             $(id)?.classList.remove('hidden');
         }
 
-        // ========== CRIPTOGRAFÍA CORREGIDA ==========
+        function getCurrentTime() {
+            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
 
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // ========== SONIDO ==========
+        function playMessageSound() {
+            if (!soundEnabled) return;
+            const sound = $('messageSound');
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(e => console.log('Audio play failed:', e));
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const iconOn = $('soundIconOn');
+            const iconOff = $('soundIconOff');
+            const btn = $('soundBtn');
+            
+            if (soundEnabled) {
+                iconOn?.classList.remove('hidden');
+                iconOff?.classList.add('hidden');
+                btn?.classList.add('sound-on');
+                btn?.classList.remove('sound-off');
+            } else {
+                iconOn?.classList.add('hidden');
+                iconOff?.classList.remove('hidden');
+                btn?.classList.add('sound-off');
+                btn?.classList.remove('sound-on');
+            }
+        }
+
+        // ========== CRIPTOGRAFÍA ==========
         async function generateKeyPair() {
             return window.crypto.subtle.generateKey(
                 { name: "ECDH", namedCurve: "P-256" },
-                true,  // extractable para debugging
+                true,
                 ["deriveBits"]
             );
         }
@@ -136,7 +226,6 @@
             }
         }
 
-        // ✅ CORREGIDO: Clave extractable para poder hacer SAS
         async function deriveSharedKey(privateKey, publicKey) {
             const sharedBits = await window.crypto.subtle.deriveBits(
                 { name: "ECDH", public: publicKey },
@@ -144,19 +233,17 @@
                 256
             );
             
-            // ✅ EXTRACTABLE: true - necesario para getSAS()
             const aesKey = await window.crypto.subtle.importKey(
                 "raw",
                 await window.crypto.subtle.digest("SHA-256", sharedBits),
                 { name: "AES-GCM", length: 256 },
-                true,  // ← ¡EXTRACTABLE TRUE!
+                true,
                 ["encrypt", "decrypt"]
             );
 
             return aesKey;
         }
 
-        // ✅ AHORA FUNCIONA porque la clave es extractable
         async function getSAS(aesKey) {
             try {
                 const exported = await window.crypto.subtle.exportKey("raw", aesKey);
@@ -179,7 +266,10 @@
                 key,
                 data
             );
-            return { data: Array.from(new Uint8Array(encrypted)), iv: Array.from(iv) };
+            return { 
+                data: Array.from(new Uint8Array(encrypted)), 
+                iv: Array.from(iv) 
+            };
         }
 
         async function decryptData(payload, key) {
@@ -195,61 +285,184 @@
             }
         }
 
-        // ========== LÓGICA SAS ==========
+        // ========== UI MENSAJES ==========
+        function addSystemLog(msg, color = "slate") {
+            const container = $('messageContainer');
+            const div = document.createElement('div');
+            div.className = `text-xs text-center my-3 font-bold text-${color}-600`;
+            div.textContent = msg;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
 
+        function addMessage(text, type, sender, time) {
+            const container = $('messageContainer');
+            const div = document.createElement('div');
+            div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} message-in`;
+            
+            const timeStr = time || getCurrentTime();
+            
+            div.innerHTML = `
+                <div class="max-w-[85%] p-3 rounded-2xl text-sm shadow ${type === 'sent' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border rounded-tl-none'}">
+                    ${sender ? `<div class="text-xs font-bold opacity-60 mb-1">${escapeHtml(sender)}</div>` : ''}
+                    <div class="font-bold leading-relaxed">${escapeHtml(text)}</div>
+                    <div class="text-[10px] opacity-50 mt-1 text-right font-mono">${timeStr}</div>
+                </div>
+            `;
+            
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            
+            // Sonido solo para mensajes recibidos
+            if (type === 'received') {
+                playMessageSound();
+            }
+        }
+
+        function addFileMessage(name, size, type, sender, blobUrl, time) {
+            const container = $('messageContainer');
+            const div = document.createElement('div');
+            div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} message-in`;
+            
+            const timeStr = time || getCurrentTime();
+            const formattedSize = formatFileSize(size);
+            
+            div.innerHTML = `
+                <div class="max-w-[85%] p-3 rounded-2xl text-sm shadow ${type === 'sent' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border rounded-tl-none'}">
+                    ${sender ? `<div class="text-xs font-bold opacity-60 mb-1">${escapeHtml(sender)}</div>` : ''}
+                    <div class="flex items-center gap-3">
+                        <div class="bg-black/10 p-2 rounded-lg">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-xs truncate">${escapeHtml(name)}</div>
+                            <div class="text-[10px] opacity-60">${formattedSize}</div>
+                        </div>
+                        ${blobUrl ? `
+                            <a href="${blobUrl}" download="${escapeHtml(name)}" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg transition-colors" title="Descargar">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                            </a>
+                        ` : `
+                            <div class="opacity-50 text-xs">✓</div>
+                        `}
+                    </div>
+                    <div class="text-[10px] opacity-50 mt-1 text-right font-mono">${timeStr}</div>
+                </div>
+            `;
+            
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            
+            // Sonido para archivos recibidos
+            if (type === 'received') {
+                playMessageSound();
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ========== MANEJO DE ARCHIVOS ==========
+        async function handleFileSelect(input) {
+            const file = input.files[0];
+            if (!file || !currentAesKey || !isSASVerified) return;
+
+            if (file.size > MAX_FILE_SIZE) {
+                addSystemLog(`❌ Archivo muy grande (máx ${formatFileSize(MAX_FILE_SIZE)})`, "red");
+                input.value = '';
+                return;
+            }
+            
+            addSystemLog(`📤 Enviando: ${file.name}...`, "indigo");
+            
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const now = Date.now();
+                    const timeStr = getCurrentTime();
+                    const uid = crypto.randomUUID();
+                    
+                    // Encriptar archivo
+                    const encryptedFile = await encryptData(e.target.result, currentAesKey);
+                    
+                    // Encriptar metadatos
+                    const meta = JSON.stringify({ 
+                        name: file.name, 
+                        type: file.type, 
+                        ts: now, 
+                        size: file.size, 
+                        uid 
+                    });
+                    const encryptedMeta = await encryptData(new TextEncoder().encode(meta), currentAesKey);
+                    
+                    // Enviar
+                    connection.send({ 
+                        type: 'file', 
+                        meta: encryptedMeta, 
+                        payload: encryptedFile,
+                        metadata: { name: myName }
+                    });
+                    
+                    // Mostrar en UI
+                    addFileMessage(file.name, file.size, 'sent', '', null, timeStr);
+                    
+                    input.value = '';
+                    addSystemLog(`✅ Archivo enviado`, "green");
+                    
+                } catch (err) {
+                    console.error("File send error:", err);
+                    addSystemLog("❌ Error al enviar archivo", "red");
+                }
+            };
+            
+            reader.onerror = () => {
+                addSystemLog("❌ Error leyendo archivo", "red");
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        // ========== LÓGICA SAS ==========
         async function confirmSAS() {
             isSASVerified = true;
             $('sasModal').classList.add('hidden');
             
             const chatInput = $('chatInput');
             const sendBtn = $('sendBtn');
+            const fileBtn = $('fileBtn');
             const statusText = $('statusText');
             
             if (chatInput) {
                 chatInput.disabled = false;
-                chatInput.placeholder = "Mensaje seguro...";
+                chatInput.placeholder = "Escribe mensaje seguro...";
                 chatInput.focus();
             }
             if (sendBtn) sendBtn.disabled = false;
+            if (fileBtn) fileBtn.disabled = false;
+            
             if (statusText) {
                 statusText.textContent = '🔒 Seguro';
                 statusText.className = 'text-xs bg-green-500 text-white px-2 py-1 rounded font-bold';
             }
             
-            addLog("✅ SAS verificado. Canal seguro.", "green");
+            addSystemLog("✅ SAS verificado. Canal seguro activado.", "green");
         }
 
         function abortConnection() {
-            addLog("🚨 Abortado por seguridad", "red");
+            addSystemLog("🚨 Conexión abortada por seguridad", "red");
             if (connection) connection.close();
             if (myPeer) myPeer.destroy();
             setTimeout(() => location.reload(), 2000);
         }
 
-        function addLog(msg, color = "slate") {
-            const container = $('messageContainer');
-            const div = document.createElement('div');
-            div.className = `text-xs text-center my-3 font-bold text-${color}-600`;
-            div.textContent = msg;
-            container.appendChild(div);
-        }
-
-        function addMsg(text, type, sender) {
-            const container = $('messageContainer');
-            const div = document.createElement('div');
-            div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} message-in`;
-            div.innerHTML = `
-                <div class="max-w-[80%] p-3 rounded-2xl text-sm shadow ${type === 'sent' ? 'bg-indigo-600 text-white' : 'bg-white border'}">
-                    ${sender ? `<div class="text-xs font-bold opacity-50 mb-1">${sender}</div>` : ''}
-                    <div class="font-bold">${text}</div>
-                </div>
-            `;
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-        }
-
         // ========== PEERJS ==========
-
         const setupConnection = (conn) => {
             connection = conn;
             
@@ -259,43 +472,35 @@
                 try {
                     // HANDSHAKE
                     if (raw.type === 'handshake' || raw.type === 'handshake_ack') {
-                        console.log("Handshake received");
-                        
                         const remotePubKey = await importPublicKey(raw.pubKey);
                         if (!remotePubKey) {
-                            addLog("❌ Clave inválida", "red");
+                            addSystemLog("❌ Clave pública inválida", "red");
                             return;
                         }
 
-                        // Responder si somos el servidor
                         if (!myKeyPairs && raw.type === 'handshake') {
                             myKeyPairs = await generateKeyPair();
                             const myPub = await exportPublicKey(myKeyPairs.publicKey);
                             conn.send({ type: 'handshake_ack', pubKey: myPub, name: myName });
                         }
 
-                        // Derivar clave y mostrar SAS
                         currentAesKey = await deriveSharedKey(myKeyPairs.privateKey, remotePubKey);
                         const sas = await getSAS(currentAesKey);
                         
-                        console.log("SAS generado:", sas);
-                        
-                        // Mostrar en UI
                         $('sasDisplay').textContent = sas;
                         $('displayPeerName').textContent = raw.name || "Contacto";
                         
-                        // MOSTRAR MODAL SAS
                         $('sasModal').classList.remove('hidden');
                         $('sasModal').style.display = 'flex';
                         
-                        addLog("🔐 Handshake OK. Verifica SAS con tu contacto.", "indigo");
+                        addSystemLog("🔐 Handshake OK. Verifica SAS con tu contacto.", "indigo");
                     }
 
-                    // CHAT (solo si SAS verificado)
+                    // MENSAJE DE TEXTO
                     if (raw.type === 'chat' && isSASVerified && currentAesKey) {
                         const decrypted = await decryptData(raw.payload, currentAesKey);
                         if (!decrypted) {
-                            addLog("❌ Mensaje corrupto", "red");
+                            addSystemLog("❌ Mensaje corrupto", "red");
                             return;
                         }
                         
@@ -303,22 +508,54 @@
                         if (processedIds.has(decoded.uid)) return;
                         processedIds.add(decoded.uid);
                         
-                        addMsg(decoded.text, 'received', raw.metadata?.name || "Contacto");
+                        const timeStr = new Date(decoded.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        addMessage(decoded.text, 'received', raw.metadata?.name || "Contacto", timeStr);
                     }
+
+                    // ARCHIVO
+                    if (raw.type === 'file' && isSASVerified && currentAesKey) {
+                        const decryptedMeta = await decryptData(raw.meta, currentAesKey);
+                        if (!decryptedMeta) {
+                            addSystemLog("❌ Metadatos corruptos", "red");
+                            return;
+                        }
+                        
+                        const meta = JSON.parse(new TextDecoder().decode(decryptedMeta));
+                        
+                        if (meta.size > MAX_FILE_SIZE || processedIds.has(meta.uid)) {
+                            addSystemLog("❌ Archivo inválido o duplicado", "red");
+                            return;
+                        }
+                        processedIds.add(meta.uid);
+                        
+                        const decryptedFile = await decryptData(raw.payload, currentAesKey);
+                        if (!decryptedFile) {
+                            addSystemLog("❌ Archivo corrupto", "red");
+                            return;
+                        }
+                        
+                        const blob = new Blob([decryptedFile], { type: meta.type });
+                        const blobUrl = URL.createObjectURL(blob);
+                        
+                        const timeStr = new Date(meta.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        addFileMessage(meta.name, meta.size, 'received', raw.metadata?.name || "Contacto", blobUrl, timeStr);
+                        
+                        addSystemLog(`📥 Archivo recibido: ${meta.name}`, "green");
+                    }
+                    
                 } catch (err) {
-                    console.error("Error:", err);
-                    addLog("Error de procesamiento", "red");
+                    console.error("Processing error:", err);
+                    addSystemLog("Error de procesamiento", "red");
                 }
             });
 
             conn.on('close', () => {
-                addLog("Conexión cerrada", "red");
+                addSystemLog("Conexión cerrada", "red");
                 if (myPeer) myPeer.destroy();
             });
         };
 
         // ========== ACCIONES ==========
-
         window.createRoom = async function() {
             const name = $('nameInput').value.trim();
             if (!name) return alert("Ingresa tu nombre");
@@ -331,18 +568,20 @@
             });
             
             myPeer.on('open', (id) => {
-                addLog(`🆔 Tu ID: ${id}`, "indigo");
-                addLog("Esperando conexión...", "slate");
+                $('shareId').textContent = id;
+                $('shareSection').classList.remove('hidden');
+                addSystemLog(`🆔 Tu ID: ${id}`, "indigo");
+                addSystemLog("Esperando conexión...", "slate");
             });
             
             myPeer.on('connection', (conn) => {
-                addLog("📞 Conexión entrante...", "indigo");
+                addSystemLog("📞 Conexión entrante...", "indigo");
                 setupConnection(conn);
             });
             
             myPeer.on('error', (err) => {
                 console.error("Peer error:", err);
-                addLog(`Error: ${err.type}`, "red");
+                addSystemLog(`Error: ${err.type}`, "red");
             });
         };
 
@@ -363,7 +602,7 @@
             });
             
             myPeer.on('open', async () => {
-                addLog("🔗 Conectando...", "indigo");
+                addSystemLog("🔗 Conectando...", "indigo");
                 
                 const conn = myPeer.connect(targetId, { 
                     reliable: true, 
@@ -372,13 +611,11 @@
                 
                 setupConnection(conn);
                 
-                // Enviar handshake
                 setTimeout(async () => {
                     try {
                         myKeyPairs = await generateKeyPair();
                         const myPub = await exportPublicKey(myKeyPairs.publicKey);
                         conn.send({ type: 'handshake', pubKey: myPub, name: myName });
-                        addLog("📤 Handshake enviado", "indigo");
                     } catch (err) {
                         console.error("Handshake error:", err);
                     }
@@ -393,18 +630,34 @@
             
             try {
                 const uid = crypto.randomUUID();
+                const now = Date.now();
+                const timeStr = getCurrentTime();
+                
                 const payload = new TextEncoder().encode(JSON.stringify({
-                    text, ts: Date.now(), uid
+                    text, ts: now, uid
                 }));
                 
                 const encrypted = await encryptData(payload, currentAesKey);
-                connection.send({ type: 'chat', payload: encrypted, metadata: { name: myName } });
+                connection.send({ 
+                    type: 'chat', 
+                    payload: encrypted, 
+                    metadata: { name: myName } 
+                });
                 
-                addMsg(text, 'sent');
+                addMessage(text, 'sent', '', timeStr);
                 input.value = '';
+                
             } catch (err) {
                 console.error("Send error:", err);
-                addLog("Error al enviar", "red");
+                addSystemLog("Error al enviar", "red");
+            }
+        };
+
+        window.copyId = function() {
+            const id = $('shareId').textContent;
+            if (id) {
+                navigator.clipboard.writeText(id);
+                addSystemLog("📋 ID copiado", "green");
             }
         };
 
