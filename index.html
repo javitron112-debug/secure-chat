@@ -229,4 +229,645 @@
             const sharedBits = await window.crypto.subtle.deriveBits(
                 { name: "ECDH", public: publicKey },
                 privateKey,
+                256
+            );
+            
+            // Paso 2: Usar HKDF para derivar la clave AES directamente
+            // Importamos los bits como material de clave raw para HKDF
+            const hkdfKey = await window.crypto.subtle.importKey(
+                "raw",
+                sharedBits,
+                { name: "HKDF" },
+                false,
+                ["deriveKey"]
+            );
+            
+            const enc = new TextEncoder();
+            const salt = enc.encode(RATCHET_SALT);
+            
+            // Derivamos AES-256-GCM directamente
+            const aesKey = await window.crypto.subtle.deriveKey(
+                {
+                    name: "HKDF",
+                    hash: "SHA-256",
+                    salt: salt,
+                    info: enc.encode("aes_gcm_key")
+                },
+                hkdfKey,
+                { name: "AES-GCM", length: 256 },
+                true,
+                ["encrypt", "decrypt"]
+            );
+            
+            // También derivamos material para el siguiente ratchet step
+            const nextRootMaterial = await window.crypto.subtle.deriveBits(
+                {
+                    name: "HKDF",
+                    hash: "SHA-256",
+                    salt: salt,
+                    info: enc.encode("next_ratchet")
+                },
+                hkdfKey,
+                256
+            );
+            
+            // Importamos el material del siguiente ratchet como HKDF key
+            const nextRootKey = await window.crypto.subtle.importKey(
+                "raw",
+                nextRootMaterial,
+                { name: "HKDF" },
+                false,
+                ["deriveKey"]
+            );
+            
+            return { aes: aesKey, root: nextRootKey };
+        }
+
+        // Ratchet: derivar nueva clave AES desde el material raíz HKDF
+        async function rotateRatchet(rootKey) {
+            const enc = new TextEncoder();
+            const salt = enc.encode(RATCHET_SALT);
+            
+            // Nueva clave AES
+            const aesKey = await window.crypto.subtle.deriveKey(
+                {
+                    name: "HKDF",
+                    hash: "SHA-256",
+                    salt: salt,
+                    info: enc.encode("msg_key")
+                },
+                rootKey,
+                { name: "AES-GCM", length: 256 },
+                true,
+                ["encrypt", "decrypt"]
+            );
+            
+            // Siguiente material raíz
+            const nextRootBits = await window.crypto.subtle.deriveBits(
+                {
+                    name: "HKDF",
+                    hash: "SHA-256",
+                    salt: salt,
+                    info: enc.encode("root_upd")
+                },
+                rootKey,
+                256
+            );
+            
+            const nextRootKey = await window.crypto.subtle.importKey(
+                "raw",
+                nextRootBits,
+                { name: "HKDF" },
+                false,
+                ["deriveKey"]
+            );
+            
+            return { aes: aesKey, root: nextRootKey };
+        }
+
+        async function getSAS(aesKey) {
+            const exported = await window.crypto.subtle.exportKey("raw", aesKey);
+            const hashBuffer = await crypto.subtle.digest("SHA-256", exported);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.slice(0, 4).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+        }
+
+        async function encryptData(data, key) {
+            const iv = window.crypto.getRandomValues(new Uint8Array(12));
+            const encrypted = await window.crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv },
+                key,
+                data
+            );
+            return { data: Array.from(new Uint8Array(encrypted)), iv: Array.from(iv) };
+        }
+
+        async function decryptData(package, key) {
+            try {
+                const decrypted = await window.crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv: new Uint8Array(package.iv) },
+                    key,
+                    new Uint8Array(package.data)
+                );
+                return decrypted;
+            } catch (e) { 
+                console.error("Decryption failed:", e);
+                return null; 
+            }
+        }
+
+        // --- Lógica de Sesión ---
+
+        async function confirmSAS() {
+            isSASVerified = true;
+            const sasModal = $('sasModal');
+            const lockedUI = $('lockedUI');
+            const chatInput = $('chatInput');
+            
+            if (sasModal) sasModal.classList.add('hidden');
+            if (lockedUI) lockedUI.classList.add('hidden');
+            if (chatInput) {
+                chatInput.disabled = false;
+                chatInput.placeholder = "Escribe mensaje seguro...";
+                chatInput.focus();
+            }
+            
+            const sendBtn = $('sendBtn');
+            const fileBtn = $('fileBtn');
+            if (sendBtn) sendBtn.disabled = false;
+            if (fileBtn) fileBtn.disabled = false;
+            
+            const indicator = $('statusIndicator');
+            const text = $('statusText');
+            if (indicator) {
+                indicator.className = 'w-1.5 h-1.5 rounded-full bg-green-500';
+                indicator.style.boxShadow = '0 0 10px rgba(34, 197, 94, 0.6)';
+            }
+            if (text) text.textContent = 'Seguro';
+            
+            systemLog("SAS Verificado • Canal Activo", "text-green-600");
+        }
+
+        function abortConnection() {
+            cleanupMemory();
+            location.reload();
+        }
+
+        function securityFault(msg) {
+            const alertEl = $('customAlert');
+            const alertMsg = $('alertMsg');
+            if (alertMsg) alertMsg.textContent = msg;
+            if (alertEl) {
+                alertEl.classList.remove('hidden');
+                alertEl.style.display = 'flex';
+            }
+            cleanupMemory();
+        }
+
+        // --- Chat y Archivos ---
+
+        async function handleFileSelect(input) {
+            const file = input.files[0];
+            if (!file || !currentAesKey || !isSASVerified) return;
+
+            if (file.size > MAX_FILE_SIZE) {
+                securityFault("Archivo excede límite de seguridad (20MB)");
+                input.value = '';
+                return;
+            }
+            
+            systemLog(`Procesando archivo...`, "text-indigo-400");
+            
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const now = Date.now();
+                    const encryptedFile = await encryptData(e.target.result, currentAesKey);
+                    const meta = JSON.stringify({ 
+                        name: file.name, type: file.type, ts: now, size: file.size,
+                        seq: currentSendSequence++, uid: window.crypto.randomUUID()
+                    });
+                    const encryptedMeta = await encryptData(new TextEncoder().encode(meta), currentAesKey);
+                    
+                    if (connection && connection.open) {
+                        connection.send({ type: 'file', meta: encryptedMeta, payload: encryptedFile });
+                        await advanceRatchet();
+                        addFileMessage(file.name, file.size, 'sent', '', null, new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                    }
+                    input.value = '';
+                } catch (err) {
+                    console.error("File send error:", err);
+                    systemLog("Error al enviar archivo", "text-red-500");
+                }
+            };
+            reader.onerror = () => {
+                systemLog("Error leyendo archivo", "text-red-500");
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function addFileMessage(name, size, type, sender = '', blobUrl = null, time = '') {
+            const container = $('messageContainer');
+            if (!container) return;
+            
+            const div = document.createElement('div');
+            div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} message-in`;
+            const inner = document.createElement('div');
+            inner.className = `max-w-[85%] p-4 rounded-3xl shadow-md border ${
+                type === 'sent' ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none' : 'bg-white border-slate-100 text-slate-800 rounded-tl-none'
+            }`;
+            
+            if (sender && type === 'received') {
+                const s = document.createElement('div');
+                s.className = 'text-[9px] font-black opacity-50 mb-1 uppercase tracking-tighter';
+                s.textContent = sender;
+                inner.appendChild(s);
+            }
+            
+            const formattedSize = (size / 1024 / 1024).toFixed(2) + ' MB';
+            inner.innerHTML += `
+                <div class="flex items-center gap-3">
+                    <div class="bg-black/10 p-2 rounded-xl">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold text-xs truncate">${name}</div>
+                        <div class="text-[9px] opacity-60">${formattedSize}</div>
+                    </div>
+                    ${blobUrl ? `<a href="${blobUrl}" download="${name}" class="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></a>` : ''}
+                </div>`;
+            
+            if (time) {
+                const timeNode = document.createElement('div');
+                timeNode.className = `text-[9px] opacity-40 mt-2 font-bold ${type === 'sent' ? 'text-right' : 'text-left'}`;
+                timeNode.textContent = time;
+                inner.appendChild(timeNode);
+            }
+            
+            div.appendChild(inner);
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        const addMessage = (text, type, sender = '', time = '') => {
+            const container = $('messageContainer');
+            if (!container) return;
+            
+            const div = document.createElement('div');
+            div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} message-in`;
+            const inner = document.createElement('div');
+            inner.className = `max-w-[85%] p-4 rounded-3xl shadow-md border ${
+                type === 'sent' ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none' : 'bg-white border-slate-100 text-slate-800 rounded-tl-none'
+            }`;
+            
+            if (sender && type === 'received') {
+                const s = document.createElement('div');
+                s.className = 'text-[9px] font-black opacity-50 mb-1 uppercase tracking-tighter';
+                s.textContent = sender;
+                inner.appendChild(s);
+            }
+            
+            const textNode = document.createElement('div');
+            textNode.className = "break-words whitespace-pre-wrap font-bold text-sm leading-relaxed";
+            textNode.textContent = text;
+            inner.appendChild(textNode);
+            
+            if (time) {
+                const timeNode = document.createElement('div');
+                timeNode.className = `text-[9px] opacity-40 mt-1.5 font-bold ${type === 'sent' ? 'text-right' : 'text-left'}`;
+                timeNode.textContent = time;
+                inner.appendChild(timeNode);
+            }
+            
+            div.appendChild(inner);
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        };
+
+        const systemLog = (msg, color = 'text-slate-400') => {
+            const container = $('messageContainer');
+            if (!container) return;
+            
+            const div = document.createElement('div');
+            div.className = `text-[9px] text-center ${color} my-6 uppercase tracking-[0.3em] font-black px-10 leading-relaxed`;
+            div.textContent = msg;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        };
+
+        // --- PeerJS ---
+
+        const setupConnection = (conn) => {
+            connection = conn;
+            
+            conn.on('open', () => {
+                console.log("Connection opened");
+            });
+            
+            conn.on('data', async (raw) => {
+                if (!raw || typeof raw !== 'object') return;
+
+                try {
+                    if (raw.type === 'handshake' || raw.type === 'handshake_ack') {
+                        const remotePubKey = await importPublicKey(raw.pubKey);
+                        if (!remotePubKey) {
+                            console.error("Invalid public key");
+                            return;
+                        }
+                        
+                        if (!myKeyPairs && raw.type === 'handshake') {
+                            myKeyPairs = await generateKeyPair();
+                            const myPub = await exportPublicKey(myKeyPairs.publicKey);
+                            conn.send({ type: 'handshake_ack', pubKey: myPub, name: myName });
+                        }
+                        
+                        // USAR LA NUEVA FUNCIÓN deriveAesKey
+                        const result = await deriveAesKey(myKeyPairs.privateKey, remotePubKey);
+                        currentAesKey = result.aes;
+                        sharedSecretRoot = result.root;
+                        
+                        const sas = await getSAS(currentAesKey);
+                        showVerification(sas, raw.name);
+                    }
+                    
+                    if (raw.type === 'chat') {
+                        if (!isSASVerified || !currentAesKey) return;
+                        
+                        const decrypted = await decryptData(raw.payload, currentAesKey);
+                        if (!decrypted) {
+                            console.warn("Failed to decrypt message");
+                            return;
+                        }
+                        
+                        const decoded = JSON.parse(new TextDecoder().decode(decrypted));
+                        
+                        if (decoded.seq <= lastReceivedSequence || processedPackageIds.has(decoded.uid)) {
+                            console.warn("Replay attack detected");
+                            return;
+                        }
+                        
+                        processedPackageIds.add(decoded.uid);
+                        lastReceivedSequence = decoded.seq;
+                        
+                        await advanceRatchet();
+                        const timeStr = new Date(decoded.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        addMessage(decoded.text, 'received', conn.metadata?.name || "Contacto", timeStr);
+                    }
+
+                    if (raw.type === 'file') {
+                        if (!isSASVerified || !currentAesKey) return;
+                        
+                        const decryptedMeta = await decryptData(raw.meta, currentAesKey);
+                        if (!decryptedMeta) return;
+                        
+                        const meta = JSON.parse(new TextDecoder().decode(decryptedMeta));
+                        
+                        if (meta.size > MAX_FILE_SIZE || meta.seq <= lastReceivedSequence || processedPackageIds.has(meta.uid)) {
+                            console.warn("Invalid file metadata");
+                            return;
+                        }
+                        
+                        processedPackageIds.add(meta.uid);
+                        lastReceivedSequence = meta.seq;
+                        
+                        const decryptedFile = await decryptData(raw.payload, currentAesKey);
+                        if (!decryptedFile) return;
+                        
+                        const blob = new Blob([decryptedFile], { type: meta.type });
+                        const blobUrl = URL.createObjectURL(blob);
+                        activeBlobUrls.push(blobUrl);
+                        
+                        if (activeBlobUrls.length > 3) {
+                            const oldUrl = activeBlobUrls.shift();
+                            URL.revokeObjectURL(oldUrl);
+                        }
+                        
+                        await advanceRatchet();
+                        const timeStr = new Date(meta.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        addFileMessage(meta.name, meta.size, 'received', conn.metadata?.name || "Contacto", blobUrl, timeStr);
+                    }
+                } catch (err) {
+                    console.error("Error processing message:", err);
+                }
+            });
+
+            conn.on('close', () => {
+                systemLog("Conexión cerrada", "text-red-500");
+                cleanupMemory();
+                setTimeout(() => location.reload(), 2000);
+            });
+            
+            conn.on('error', (err) => {
+                console.error("Connection error:", err);
+            });
+        };
+
+        async function advanceRatchet() {
+            if (!sharedSecretRoot) return;
+            try {
+                const r = await rotateRatchet(sharedSecretRoot);
+                currentAesKey = r.aes;
+                sharedSecretRoot = r.root;
+            } catch (err) {
+                console.error("Ratchet error:", err);
+            }
+        }
+
+        function showVerification(sas, peerName) {
+            const sasDisplay = $('sasDisplay');
+            if (sasDisplay) sasDisplay.textContent = sas;
+            
+            const displayPeerName = $('displayPeerName');
+            if (displayPeerName) displayPeerName.textContent = peerName || "Contacto";
+            
+            const sasModal = $('sasModal');
+            if (sasModal) {
+                sasModal.classList.remove('hidden');
+                sasModal.style.display = 'flex';
+            }
+            
+            const displayRoomId = $('displayRoomId');
+            if (displayRoomId && connection) {
+                displayRoomId.textContent = `ROOM: ${connection.peer}`;
+            }
+        }
+
+        function cleanupMemory() {
+            activeBlobUrls.forEach(url => URL.revokeObjectURL(url));
+            activeBlobUrls = [];
+            currentAesKey = null; 
+            sharedSecretRoot = null;
+            myKeyPairs = null;
+            isSASVerified = false;
+            if (connection) {
+                try { connection.close(); } catch(e) {}
+            }
+            if (myPeer) {
+                try { myPeer.destroy(); } catch(e) {}
+            }
+        }
+
+        window.createRoom = () => {
+            const nameInput = $('nameInput');
+            const name = nameInput ? nameInput.value.trim() : '';
+            if (!name) return;
+            myName = name;
+            switchScreen('chatScreen');
+            initPeer(generateSecureID());
+        };
+
+        window.showJoin = () => {
+            const nameInput = $('nameInput');
+            if (!nameInput || !nameInput.value.trim()) return;
+            switchScreen('joinScreen');
+        };
+
+        const initPeer = (id) => {
+            const config = {
+                debug: 2,
+                host: '0.peerjs.com',
+                port: 443,
+                secure: true,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
+            };
+            
+            if (id) config.peerId = id;
+            
+            myPeer = new Peer(id, config);
+            
+            myPeer.on('open', (openedId) => {
+                console.log("Peer opened:", openedId);
+                const shareId = $('shareId');
+                const shareSection = $('shareSection');
                 
+                if (shareId) shareId.textContent = openedId;
+                if (shareSection && id) shareSection.classList.remove('hidden');
+            });
+            
+            myPeer.on('connection', (conn) => {
+                console.log("Incoming connection");
+                pendingConn = conn;
+                const reqModal = $('requestModal');
+                if (reqModal) {
+                    reqModal.classList.remove('hidden');
+                    reqModal.style.display = 'flex';
+                }
+            });
+            
+            myPeer.on('error', (err) => {
+                console.error("Peer error:", err);
+                if (err.type !== 'peer-unavailable') {
+                    securityFault(`Error de red: ${err.message || err.type}`);
+                }
+            });
+        };
+
+        window.connectToPeer = async () => {
+            const joinIdInput = $('joinIdInput');
+            const targetId = joinIdInput ? joinIdInput.value.trim().toUpperCase() : '';
+            if (!targetId) return;
+            
+            const nameInput = $('nameInput');
+            myName = nameInput ? nameInput.value.trim() : 'Anónimo';
+            
+            switchScreen('chatScreen');
+            
+            const config = {
+                debug: 2,
+                host: '0.peerjs.com',
+                port: 443,
+                secure: true
+            };
+            
+            myPeer = new Peer(null, config);
+            
+            myPeer.on('open', () => {
+                console.log("Peer ready for connection");
+                const conn = myPeer.connect(targetId, { 
+                    reliable: true,
+                    metadata: { name: myName }
+                });
+                setupConnection(conn);
+                systemLog("Conectando...", "text-indigo-400");
+            });
+            
+            myPeer.on('error', (err) => {
+                console.error("Connection error:", err);
+                securityFault(`Error: ${err.message || err.type}`);
+            });
+        };
+
+        window.respondToRequest = async (accept) => {
+            const reqModal = $('requestModal');
+            if (reqModal) {
+                reqModal.classList.add('hidden');
+                reqModal.style.display = 'none';
+            }
+            
+            if (accept && pendingConn) {
+                try {
+                    myKeyPairs = await generateKeyPair();
+                    const myPub = await exportPublicKey(myKeyPairs.publicKey);
+                    setupConnection(pendingConn);
+                    pendingConn.send({ type: 'handshake', pubKey: myPub, name: myName });
+                } catch (err) {
+                    console.error("Handshake error:", err);
+                    securityFault("Error en handshake");
+                }
+            } else if (pendingConn) {
+                pendingConn.close();
+            }
+        };
+
+        window.handleSendMessage = async () => {
+            const chatInput = $('chatInput');
+            const text = chatInput ? chatInput.value.trim() : '';
+            
+            if (!text || !connection || !currentAesKey || !isSASVerified) return;
+            
+            const now = Date.now();
+            if (now - lastSendTime < 500) return;
+            lastSendTime = now;
+            
+            try {
+                const payload = new TextEncoder().encode(JSON.stringify({ 
+                    text: text, ts: now, seq: currentSendSequence++, 
+                    uid: window.crypto.randomUUID()
+                }));
+                
+                const encrypted = await encryptData(payload, currentAesKey);
+                connection.send({ type: 'chat', payload: encrypted });
+                
+                await advanceRatchet();
+                addMessage(text, 'sent', '', new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                
+                if (chatInput) chatInput.value = '';
+            } catch (err) {
+                console.error("Send error:", err);
+                systemLog("Error al enviar", "text-red-500");
+            }
+        };
+
+        window.copyId = () => { 
+            const shareId = $('shareId');
+            const id = shareId ? shareId.textContent : '';
+            if (id) {
+                navigator.clipboard.writeText(id); 
+                systemLog("ID copiado al portapapeles"); 
+            }
+        };
+        
+        window.backToSetup = () => {
+            cleanupMemory();
+            switchScreen('setupScreen');
+        };
+
+        const generateSecureID = () => {
+            const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
+            const array = new Uint8Array(12);
+            window.crypto.getRandomValues(array);
+            let result = "";
+            for (let i = 0; i < array.length; i++) {
+                if (i === 6) result += "-";
+                result += charset[array[i] % charset.length];
+            }
+            return result;
+        };
+
+        // Event listeners
+        const chatInput = $('chatInput');
+        if (chatInput) {
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleSendMessage();
+            });
+        }
+        
+        window.addEventListener('beforeunload', cleanupMemory);
+    </script>
+</body>
+</html>
