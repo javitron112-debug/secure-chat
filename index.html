@@ -3,138 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureP2P v2.1 - File Transfer</title>
+    <!-- Capa de Seguridad: CSP para mitigar XSS y fugas de datos -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: blob:; connect-src 'self' wss://*.peerjs.com https://*.peerjs.com;">
+    <title>SecureP2P v2.5 - Cyber-Hardened</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .message-in { animation: slideUp 0.2s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .message-in { animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
+        .sas-pulse { animation: pulse-border 2s infinite; }
+        @keyframes pulse-border { 0% { border-color: rgba(99, 102, 241, 0.4); } 50% { border-color: rgba(99, 102, 241, 1); } 100% { border-color: rgba(99, 102, 241, 0.4); } }
+        .glass-blur { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
     </style>
 </head>
-<body class="bg-slate-900 min-h-screen flex items-center justify-center p-4 font-sans text-slate-900">
+<body class="bg-slate-950 min-h-screen flex items-center justify-center p-4 font-sans text-slate-900 overflow-hidden">
 
-    <!-- Modal de Notificación -->
-    <div id="customAlert" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-[100] items-center justify-center p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center border border-slate-200">
-            <div id="alertIcon" class="mx-auto mb-4 w-12 h-12 flex items-center justify-center rounded-full bg-red-100 text-red-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+    <!-- Modal de Notificación de Seguridad -->
+    <div id="customAlert" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden z-[100] items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center border-t-8 border-red-600">
+            <div id="alertIcon" class="mx-auto mb-4 w-16 h-16 flex items-center justify-center rounded-2xl bg-red-50 text-red-600">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
             </div>
-            <h3 id="alertTitle" class="text-lg font-bold mb-2">Error</h3>
-            <p id="alertMsg" class="text-slate-600 mb-6 text-sm"></p>
-            <button onclick="closeAlert()" class="w-full px-4 py-2 bg-slate-900 text-white rounded-xl font-semibold">Cerrar</button>
+            <h3 id="alertTitle" class="text-xl font-black mb-2 text-slate-800 tracking-tight">Incidente de Seguridad</h3>
+            <p id="alertMsg" class="text-slate-600 mb-8 text-sm leading-relaxed font-medium"></p>
+            <button onclick="location.reload()" class="w-full px-4 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-red-700 transition-all shadow-xl shadow-red-200">Terminar Sesión</button>
         </div>
     </div>
 
-    <!-- Modal de Aceptación (Handshake) -->
-    <div id="requestModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 items-center justify-center p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-indigo-100">
-            <h3 class="text-xl font-black mb-2 text-slate-800 tracking-tight">🔔 Solicitud de Conexión</h3>
-            <p id="requestText" class="text-slate-600 mb-6 font-medium">Un par está intentando iniciar un intercambio de llaves.</p>
+    <!-- Modal SAS: Defensa contra MITM -->
+    <div id="sasModal" class="fixed inset-0 bg-slate-950/98 hidden z-[90] items-center justify-center p-4 glass-blur">
+        <div class="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl text-center border-t-[12px] border-indigo-600 message-in">
+            <div class="inline-flex p-4 bg-indigo-50 rounded-2xl mb-6">
+                <svg class="w-10 h-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            </div>
+            <h3 class="text-2xl font-black mb-2 text-slate-900">Validar Identidad</h3>
+            <p class="text-slate-500 text-xs mb-8 font-medium leading-relaxed">Confirma que ambos ven este código único derivado de la llave de sesión efímera:</p>
+            <div id="sasDisplay" class="text-5xl font-mono font-black tracking-[0.4em] bg-slate-50 py-8 rounded-3xl mb-8 text-indigo-600 border border-slate-100 shadow-inner sas-pulse">----</div>
+            <div class="space-y-3">
+                <button onclick="confirmSAS()" class="w-full px-6 py-5 bg-indigo-600 text-white rounded-[1.25rem] font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 active:scale-95">Verificado Correctamente</button>
+                <button onclick="location.reload()" class="w-full text-slate-400 text-[10px] font-black uppercase hover:text-red-600 transition-colors py-2 tracking-widest">Abortar Conexión</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Solicitud (Handshake) -->
+    <div id="requestModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-slate-100">
+            <h3 class="text-xl font-black mb-3 text-slate-900">Solicitud de Acceso</h3>
+            <p id="requestText" class="text-slate-500 mb-8 font-medium text-sm leading-relaxed">Un par remoto desea establecer un canal de comunicación cifrado.</p>
             <div class="flex gap-3">
-                <button onclick="respondToRequest(false)" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Rechazar</button>
-                <button onclick="respondToRequest(true)" class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition-colors shadow-lg shadow-indigo-200">Aceptar e Intercambiar</button>
+                <button onclick="respondToRequest(false)" class="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 rounded-2xl font-bold text-slate-600 transition-all uppercase text-xs">Denegar</button>
+                <button onclick="respondToRequest(true)" class="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-indigo-200 uppercase text-xs">Autorizar</button>
             </div>
         </div>
     </div>
 
-    <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[680px] relative border border-white/20">
+    <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col h-[720px] relative border border-white/20">
         
-        <!-- Pantalla: Inicio -->
-        <div id="setupScreen" class="p-8 flex flex-col h-full justify-center">
-            <div class="text-center mb-8">
-                <div class="bg-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-indigo-200">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        <!-- Pantalla: Onboarding -->
+        <div id="setupScreen" class="p-10 flex flex-col h-full justify-center">
+            <div class="text-center mb-12">
+                <div class="bg-indigo-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-200 rotate-3">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-1.34-1.34c-1.255-2.013-2.315-4.244-3.153-6.611m12.422-3.153C16.009 6.799 15 3.517 15 0m-1.66 1.66c1.255 2.013 2.315 4.244 3.153 6.611M6 11c0 3.517 1.009 6.799 2.753 9.571m1.34-1.34c1.255-2.013-2.315-4.244-3.153-6.611m-12.422-3.153C3.991 6.799 5 3.517 5 0m1.66 1.66c-1.255 2.013-2.315 4.244-3.153 6.611"></path></svg>
                 </div>
-                <h1 class="text-2xl font-black text-slate-800 tracking-tight italic">SecureP2P <span class="text-indigo-600">v2.1</span></h1>
-                <p class="text-slate-500 text-sm mt-1">ECDH + AES-GCM + File Transfer</p>
+                <h1 class="text-4xl font-black text-slate-900 tracking-tighter">SecureP2P <span class="text-indigo-600">v2.5</span></h1>
+                <p class="text-slate-400 text-sm mt-2 font-bold uppercase tracking-[0.2em]">Cyber-Hardened Edition</p>
             </div>
 
-            <div class="space-y-4">
-                <div class="space-y-1">
-                    <label class="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">Nombre de Pantalla</label>
-                    <input type="text" id="nameInput" maxlength="15" placeholder="Alias..." class="w-full px-5 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 outline-none transition-all font-medium">
+            <div class="space-y-6">
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">Alias de Sesión</label>
+                    <input type="text" id="nameInput" maxlength="12" placeholder="Ej: Agente-01" class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 outline-none transition-all font-bold text-slate-700 shadow-sm">
                 </div>
                 
-                <div class="grid grid-cols-2 gap-3 pt-2">
-                    <button onclick="createRoom()" class="px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-200 active:scale-95">Anfitrión</button>
-                    <button onclick="showJoin()" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all active:scale-95">Invitado</button>
+                <div class="grid grid-cols-2 gap-4 pt-4">
+                    <button onclick="createRoom()" class="px-6 py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-indigo-200 active:scale-95">Anfitrión</button>
+                    <button onclick="showJoin()" class="px-6 py-5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl font-black uppercase tracking-widest text-xs transition-all border border-slate-200 active:scale-95">Unirse</button>
                 </div>
             </div>
         </div>
 
-        <!-- Pantalla: Unirse -->
-        <div id="joinScreen" class="hidden p-8 flex flex-col h-full justify-center">
-            <button onclick="backToSetup()" class="text-slate-400 hover:text-slate-600 mb-6 flex items-center gap-2 text-sm font-bold transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg> Volver
+        <!-- Pantalla: Conexión -->
+        <div id="joinScreen" class="hidden p-10 flex flex-col h-full justify-center">
+            <button onclick="backToSetup()" class="text-slate-400 hover:text-slate-600 mb-10 flex items-center gap-2 text-xs font-black tracking-widest transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg> VOLVER AL INICIO
             </button>
-            <h2 class="text-xl font-black mb-4">Conectar a Sala</h2>
-            <div class="space-y-4">
-                <div class="space-y-1">
-                    <label class="text-[10px] uppercase font-black text-slate-400 ml-1">ID de Señalización</label>
-                    <input type="text" id="joinIdInput" placeholder="XXXXXX-XXXXXX" class="w-full px-5 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 outline-none uppercase text-sm font-mono font-bold tracking-widest">
+            <h2 class="text-3xl font-black mb-8 tracking-tighter">Handshake Efímero</h2>
+            <div class="space-y-8">
+                <div class="space-y-3">
+                    <label class="text-[10px] uppercase font-black text-slate-400 ml-1">ID de Destino</label>
+                    <input type="text" id="joinIdInput" placeholder="XXXXXX-XXXXXX" class="w-full px-6 py-5 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 outline-none uppercase text-sm font-mono font-black tracking-widest shadow-inner bg-slate-50">
                 </div>
-                <button onclick="connectToPeer()" class="w-full px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95">Solicitar Handshake</button>
+                <button onclick="connectToPeer()" class="w-full px-6 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-100 active:scale-95">Solicitar Canal Seguro</button>
             </div>
         </div>
 
-        <!-- Pantalla: Chat -->
-        <div id="chatScreen" class="hidden flex flex-col h-full">
-            <div class="bg-indigo-600 p-4 text-white flex justify-between items-center shadow-lg relative z-10">
-                <div class="flex items-center gap-3">
-                    <button onclick="location.reload()" class="p-1 hover:bg-white/10 rounded-lg transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <!-- Pantalla: Chat (Interface Principal) -->
+        <div id="chatScreen" class="hidden flex flex-col h-full overflow-hidden">
+            <div class="bg-indigo-600 p-5 text-white flex justify-between items-center shadow-xl relative z-10 border-b border-white/10">
+                <div class="flex items-center gap-4">
+                    <button onclick="location.reload()" class="p-2 hover:bg-white/20 rounded-xl transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                     </button>
                     <div>
-                        <h2 class="font-bold leading-none text-sm" id="displayPeerName">Conectando...</h2>
-                        <span class="text-[10px] opacity-70 font-mono tracking-tighter" id="displayRoomId">ID: ----</span>
+                        <h2 class="font-black leading-none text-sm uppercase tracking-wider italic" id="displayPeerName">Sesión</h2>
+                        <span class="text-[9px] opacity-60 font-mono tracking-tighter block mt-1" id="displayRoomId">ID: ----</span>
                     </div>
                 </div>
-                <div class="flex flex-col items-end gap-1">
-                    <div class="flex items-center gap-2 text-[9px] bg-black/20 px-2.5 py-1 rounded-full backdrop-blur-md">
+                <div class="flex flex-col items-end gap-1.5">
+                    <div class="flex items-center gap-2 text-[9px] bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-lg border border-white/10 shadow-sm">
                         <div id="statusIndicator" class="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-                        <span id="statusText" class="font-black uppercase tracking-tighter">Handshake</span>
+                        <span id="statusText" class="font-black uppercase tracking-tighter">Sincronizando</span>
                     </div>
-                    <div id="fingerprint" class="text-[9px] font-mono font-bold text-white/60 hidden bg-black/10 px-1.5 rounded">SAS: ----</div>
+                    <div id="fingerprint" class="text-[8px] font-mono font-black text-white/50 hidden px-1.5">SAS: ----</div>
                 </div>
             </div>
 
-            <div id="messageContainer" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
-                <!-- Mensajes -->
+            <div id="messageContainer" class="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50 relative">
+                <!-- Capa de Cuarentena -->
+                <div id="lockedUI" class="absolute inset-0 z-20 bg-slate-50/95 flex items-center justify-center p-10 text-center flex-col">
+                    <div class="p-8 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-w-xs">
+                        <div class="bg-indigo-50 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        </div>
+                        <p class="text-xs font-black text-slate-900 uppercase tracking-widest mb-3">Canal Bloqueado</p>
+                        <p class="text-[11px] text-slate-500 font-medium leading-relaxed">Se requiere verificación SAS manual para autorizar el tráfico de datos y habilitar el Message Ratchet.</p>
+                    </div>
+                </div>
             </div>
 
-            <!-- Area de carga de archivos (hidden input) -->
             <input type="file" id="fileInput" class="hidden" onchange="handleFileSelect(this)">
 
-            <div class="p-4 bg-white border-t border-slate-100">
-                <div id="shareSection" class="mb-4 p-3 bg-indigo-50 rounded-xl border border-indigo-100 hidden">
-                    <p class="text-[10px] text-indigo-600 font-black uppercase mb-1 flex items-center gap-1 text-center">
-                        ID DE SEÑALIZACIÓN (SÓLO PARA ENCONTRARSE)
-                    </p>
-                    <div class="flex items-center gap-2">
-                        <code class="text-xs font-mono font-black text-indigo-800 break-all select-all bg-white px-2 py-1 rounded border border-indigo-200" id="shareId">----</code>
-                        <button onclick="copyId()" class="p-2 hover:bg-indigo-200 rounded-lg transition-colors text-indigo-600 ml-auto">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+            <div class="p-5 bg-white border-t border-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.04)]">
+                <!-- Panel de Identificador -->
+                <div id="shareSection" class="mb-5 p-5 bg-slate-950 rounded-3xl border border-slate-800 hidden message-in shadow-2xl">
+                    <p class="text-[10px] text-slate-500 font-black uppercase mb-3 tracking-[0.25em] text-center">Identificador Público de Sala</p>
+                    <div class="flex items-center gap-3">
+                        <code class="flex-1 text-[11px] font-mono font-black text-indigo-400 break-all bg-indigo-500/10 px-4 py-3 rounded-2xl border border-indigo-500/20 select-all" id="shareId">----</code>
+                        <button onclick="copyId()" class="p-3.5 bg-indigo-600 hover:bg-indigo-700 rounded-2xl transition-all text-white shadow-xl shadow-indigo-500/40 active:scale-90">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
                         </button>
                     </div>
                 </div>
 
-                <div class="flex gap-2 items-center">
-                    <button onclick="$('fileInput').click()" id="fileBtn" disabled class="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all disabled:opacity-30">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414a4 4 0 00-5.656-5.656l-6.415 6.414a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                <div class="flex gap-3 items-center">
+                    <button id="fileBtn" disabled onclick="$('fileInput').click()" class="p-4 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all disabled:opacity-20 border border-transparent hover:border-indigo-100 active:scale-95">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414a4 4 0 00-5.656-5.656l-6.415 6.414a6 6 0 108.486 8.486L20.5 13"></path></svg>
                     </button>
-                    <input type="text" id="chatInput" maxlength="1000" placeholder="Escribe un mensaje cifrado..." class="flex-1 bg-slate-100 px-4 py-2.5 rounded-full outline-none focus:ring-2 ring-indigo-500 text-sm transition-all border border-transparent">
-                    <button onclick="handleSendMessage()" id="sendBtn" disabled class="p-2.5 bg-indigo-600 text-white rounded-full hover:scale-105 disabled:opacity-30 transition-all shadow-lg shadow-indigo-200">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    <input type="text" id="chatInput" maxlength="800" placeholder="Handshake pendiente..." disabled class="flex-1 bg-slate-50 px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-100 text-sm transition-all border border-slate-100 disabled:opacity-50 font-bold text-slate-800">
+                    <button onclick="handleSendMessage()" id="sendBtn" disabled class="p-4 bg-indigo-600 text-white rounded-2xl hover:scale-105 disabled:opacity-20 transition-all shadow-xl shadow-indigo-300 active:scale-95">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                     </button>
                 </div>
                 
-                <div class="flex items-center justify-between mt-3 px-1">
-                    <p class="text-[8px] text-slate-400 font-bold flex items-center gap-1 uppercase">
-                        <svg class="w-2.5 h-2.5 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg>
-                        AES-256 GCM + ECDH P-256
-                    </p>
-                    <p class="text-[8px] text-slate-300 italic">Transferencia directa • Sin límites de tamaño</p>
+                <div class="flex items-center justify-between mt-5 px-1">
+                    <div class="flex items-center gap-4">
+                        <p class="text-[9px] text-slate-400 font-black flex items-center gap-1.5 uppercase tracking-tighter">
+                            <svg class="w-3 h-3 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg>
+                            HMAC-SHA256 KDF
+                        </p>
+                        <p class="text-[9px] text-indigo-500 font-black flex items-center gap-1.5 uppercase tracking-tighter" id="ratchetIndicator">
+                            Rotación: 0
+                        </p>
+                    </div>
+                    <p class="text-[9px] text-slate-400 italic font-black">ULTIMATE HARDENING v2.5</p>
                 </div>
             </div>
         </div>
@@ -142,9 +175,22 @@
 
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
-        let myPeer, connection, myName, sharedSecretKey, myKeyPairs;
+        // --- Constantes de Seguridad ---
+        const MAX_FILE_SIZE = 20 * 1024 * 1024;
+        const CLOCK_SKEW_ALLOWED = 30000;
+        const RATCHET_SALT = "secure_p2p_ultimate_v2.5";
+        
+        // --- Estado de Aplicación ---
+        let myPeer, connection, myName, myKeyPairs;
+        let sharedSecretRoot, currentAesKey;
         let pendingConn = null;
-        let lastReceivedTimestamp = 0;
+        let lastReceivedSequence = -1;
+        let currentSendSequence = 0;
+        let activeBlobUrls = [];
+        let isSASVerified = false;
+        let lastSendTime = 0;
+        let ratchetCount = 0;
+        const processedPackageIds = new Set(); // Caché Anti-Replay Persistente por Sesión
 
         const $ = id => document.getElementById(id);
 
@@ -152,8 +198,8 @@
             ['setupScreen', 'joinScreen', 'chatScreen'].forEach(s => $(s).classList.add('hidden'));
             $(id).classList.remove('hidden');
         };
-        
-        // --- Núcleo Criptográfico ---
+
+        // --- Núcleo Criptográfico Hardened ---
 
         async function generateKeyPair() {
             return window.crypto.subtle.generateKey(
@@ -168,33 +214,56 @@
         }
 
         async function importPublicKey(b64) {
-            const binary = atob(b64);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            return window.crypto.subtle.importKey(
-                "spki", bytes, { name: "ECDH", namedCurve: "P-256" }, true, []
-            );
+            try {
+                const binary = atob(b64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                return window.crypto.subtle.importKey(
+                    "spki", bytes, { name: "ECDH", namedCurve: "P-256" }, true, []
+                );
+            } catch (e) { return null; }
         }
 
-        async function deriveSharedSecret(privateKey, publicKey) {
+        async function deriveRootSecret(privateKey, publicKey) {
             return window.crypto.subtle.deriveKey(
                 { name: "ECDH", public: publicKey },
                 privateKey,
-                { name: "AES-GCM", length: 256 },
-                true, ["encrypt", "decrypt"]
+                { name: "HMAC", hash: "SHA-256", length: 256 },
+                true, ["deriveKey", "deriveBits"]
             );
         }
 
-        async function generateFingerprint(aesKey) {
+        // --- Message Ratchet (Perfect Forward Secrecy) ---
+        async function rotateRatchet(rootMaterial) {
+            const enc = new TextEncoder();
+            const salt = enc.encode(RATCHET_SALT);
+            
+            // Nueva llave de cifrado AES-256 GCM
+            const aesKey = await window.crypto.subtle.deriveKey(
+                { name: "HKDF", hash: "SHA-256", salt: salt, info: enc.encode("msg_key") },
+                rootMaterial,
+                { name: "AES-GCM", length: 256 },
+                true, ["encrypt", "decrypt"]
+            );
+
+            // Actualización del secreto raíz para el siguiente paso del ratchet
+            const nextRoot = await window.crypto.subtle.deriveKey(
+                { name: "HKDF", hash: "SHA-256", salt: salt, info: enc.encode("root_upd") },
+                rootMaterial,
+                { name: "HMAC", hash: "SHA-256", length: 256 },
+                true, ["deriveKey", "deriveBits"]
+            );
+
+            return { aes: aesKey, root: nextRoot };
+        }
+
+        async function getSAS(aesKey) {
             const exported = await window.crypto.subtle.exportKey("raw", aesKey);
             const hashBuffer = await crypto.subtle.digest("SHA-256", exported);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const sas = hashArray.slice(0, 4).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-            $('fingerprint').textContent = `SAS: ${sas}`;
-            $('fingerprint').classList.remove('hidden');
+            return hashArray.slice(0, 4).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
         }
 
-        // Cifrar datos genéricos (String o ArrayBuffer)
         async function encryptData(data, key) {
             const iv = window.crypto.getRandomValues(new Uint8Array(12));
             const encrypted = await window.crypto.subtle.encrypt(
@@ -202,13 +271,9 @@
                 key,
                 data
             );
-            return {
-                data: Array.from(new Uint8Array(encrypted)),
-                iv: Array.from(iv)
-            };
+            return { data: Array.from(new Uint8Array(encrypted)), iv: Array.from(iv) };
         }
 
-        // Descifrar datos genéricos
         async function decryptData(package, key) {
             try {
                 const decrypted = await window.crypto.subtle.decrypt(
@@ -217,46 +282,72 @@
                     new Uint8Array(package.data)
                 );
                 return decrypted;
-            } catch (e) {
-                console.error("Fallo de descifrado", e);
-                return null;
-            }
+            } catch (e) { return null; }
         }
 
-        // --- Lógica de Archivos ---
+        // --- Validación de Estructura e Inputs ---
+        function sanitizeIncomingData(data, type) {
+            if (!data || typeof data !== 'object') return null;
+            
+            switch(type) {
+                case 'handshake':
+                    if (typeof data.pubKey === 'string' && data.pubKey.length > 50) return data;
+                    break;
+                case 'chat':
+                    if (data.payload && Array.isArray(data.payload.data) && Array.isArray(data.payload.iv)) return data;
+                    break;
+                case 'file':
+                    if (data.meta && data.payload) return data;
+                    break;
+            }
+            return null;
+        }
+
+        // --- Lógica de Sesión ---
+
+        async function confirmSAS() {
+            isSASVerified = true;
+            $('sasModal').classList.add('hidden');
+            $('lockedUI').classList.add('hidden');
+            $('chatInput').disabled = false;
+            $('chatInput').placeholder = "Mensaje cifrado...";
+            $('sendBtn').disabled = false;
+            $('fileBtn').disabled = false;
+            $('statusIndicator').className = 'w-1.5 h-1.5 rounded-full bg-green-500 sas-badge';
+            $('statusText').textContent = 'Protegido';
+            systemLog("SAS verificado: Auditoría de Handshake completa", "text-green-600");
+        }
 
         async function handleFileSelect(input) {
             const file = input.files[0];
-            if (!file || !sharedSecretKey) return;
+            if (!file || !currentAesKey || !isSASVerified) return;
+
+            if (file.size > MAX_FILE_SIZE) {
+                securityFault("Intento de envío de archivo superior a 20MB bloqueado.");
+                input.value = '';
+                return;
+            }
             
-            systemLog(`Cifrando archivo: ${file.name}...`, "text-indigo-400");
+            systemLog(`Cifrando archivo con Ratchet...`, "text-indigo-400");
             
             const reader = new FileReader();
             reader.onload = async (e) => {
-                const arrayBuffer = e.target.result;
-                const now = new Date();
+                const now = Date.now();
+                const encryptedFile = await encryptData(e.target.result, currentAesKey);
                 
-                // Ciframos el contenido del archivo
-                const encryptedFile = await encryptData(arrayBuffer, sharedSecretKey);
-                
-                // Ciframos los metadatos (nombre, tipo)
                 const meta = JSON.stringify({ 
-                    name: file.name, 
-                    type: file.type, 
-                    ts: now.getTime(),
-                    size: file.size
+                    name: file.name, type: file.type, 
+                    ts: now, size: file.size,
+                    seq: currentSendSequence++,
+                    uid: window.crypto.randomUUID()
                 });
-                const encryptedMeta = await encryptData(new TextEncoder().encode(meta), sharedSecretKey);
+                const encryptedMeta = await encryptData(new TextEncoder().encode(meta), currentAesKey);
 
-                connection.send({
-                    type: 'file',
-                    meta: encryptedMeta,
-                    payload: encryptedFile
-                });
-
-                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                addFileMessage(file.name, file.size, 'sent', '', null, timeStr);
-                input.value = ''; // Reset input
+                connection.send({ type: 'file', meta: encryptedMeta, payload: encryptedFile });
+                
+                await advanceRatchet();
+                addFileMessage(file.name, file.size, 'sent', '', null, new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                input.value = ''; 
             };
             reader.readAsArrayBuffer(file);
         }
@@ -264,79 +355,62 @@
         function addFileMessage(name, size, type, sender = '', blobUrl = null, time = '') {
             const div = document.createElement('div');
             div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} message-in`;
-            
             const inner = document.createElement('div');
-            inner.className = `max-w-[85%] p-3 rounded-2xl text-sm shadow-sm ${
-                type === 'sent' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'
+            inner.className = `max-w-[85%] p-4 rounded-[1.5rem] text-sm shadow-md border ${
+                type === 'sent' ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none' : 'bg-white border-slate-100 text-slate-800 rounded-tl-none'
             }`;
             
             if (sender && type === 'received') {
                 const s = document.createElement('div');
-                s.className = 'text-[9px] font-black opacity-40 mb-1 uppercase';
+                s.className = 'text-[10px] font-black opacity-50 mb-1.5 uppercase tracking-tighter';
                 s.textContent = sender;
                 inner.appendChild(s);
             }
-
             const formattedSize = (size / 1024 / 1024).toFixed(2) + ' MB';
-            
             inner.innerHTML += `
-                <div class="flex items-center gap-3">
-                    <div class="bg-black/10 p-2 rounded-lg">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                    </div>
+                <div class="flex items-center gap-4">
+                    <div class="bg-black/10 p-2.5 rounded-xl"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></div>
                     <div class="flex-1 overflow-hidden">
-                        <div class="font-bold truncate text-xs">${name}</div>
-                        <div class="text-[10px] opacity-70">${formattedSize}</div>
+                        <div class="font-black truncate text-xs text-left leading-none">${name}</div>
+                        <div class="text-[9px] opacity-60 text-left mt-1 font-bold">${formattedSize}</div>
                     </div>
-                    ${blobUrl ? `
-                        <a href="${blobUrl}" download="${name}" class="bg-green-500 hover:bg-green-600 p-2 rounded-full text-white transition-all shadow-md">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        </a>
-                    ` : `
-                        <div class="p-2 opacity-50 italic text-[10px] uppercase font-black tracking-widest">Enviado</div>
-                    `}
-                </div>
-            `;
-
+                    ${blobUrl ? `<a href="${blobUrl}" download="${name}" class="bg-indigo-500 hover:bg-indigo-400 p-2 rounded-xl text-white transition-all shadow-lg active:scale-90"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></a>` : `<div class="p-2 opacity-50"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>`}
+                </div>`;
+            
             if (time) {
                 const timeNode = document.createElement('div');
-                timeNode.className = `text-[9px] opacity-60 mt-2 ${type === 'sent' ? 'text-right' : 'text-left'}`;
+                timeNode.className = `text-[9px] opacity-50 mt-2 font-bold ${type === 'sent' ? 'text-right' : 'text-left'}`;
                 timeNode.textContent = time;
                 inner.appendChild(timeNode);
             }
-            
             div.appendChild(inner);
             $('messageContainer').appendChild(div);
             $('messageContainer').scrollTop = $('messageContainer').scrollHeight;
         }
 
-        // --- Lógica de Chat y UI ---
-
         const addMessage = (text, type, sender = '', time = '') => {
             const div = document.createElement('div');
             div.className = `flex ${type === 'sent' ? 'justify-end' : 'justify-start'} message-in`;
             const inner = document.createElement('div');
-            inner.className = `max-w-[85%] p-3 rounded-2xl text-sm shadow-sm ${
-                type === 'sent' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'
+            inner.className = `max-w-[85%] p-4 rounded-[1.5rem] text-sm shadow-md border ${
+                type === 'sent' ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none' : 'bg-white border-slate-100 text-slate-800 rounded-tl-none'
             }`;
             if (sender && type === 'received') {
                 const s = document.createElement('div');
-                s.className = 'text-[9px] font-black opacity-40 mb-1 uppercase';
+                s.className = 'text-[10px] font-black opacity-50 mb-1.5 uppercase tracking-tighter';
                 s.textContent = sender;
                 inner.appendChild(s);
             }
             const textNode = document.createElement('div');
-            textNode.className = "break-words whitespace-pre-wrap font-medium";
+            textNode.className = "break-words whitespace-pre-wrap font-bold text-left leading-relaxed";
             textNode.textContent = text;
             inner.appendChild(textNode);
-
             if (time) {
                 const timeNode = document.createElement('div');
-                timeNode.className = `text-[9px] opacity-60 mt-1 ${type === 'sent' ? 'text-right' : 'text-left'}`;
+                timeNode.className = `text-[9px] opacity-40 mt-1.5 font-bold ${type === 'sent' ? 'text-right' : 'text-left'}`;
                 timeNode.textContent = time;
                 inner.appendChild(timeNode);
             }
-
             div.appendChild(inner);
             $('messageContainer').appendChild(div);
             $('messageContainer').scrollTop = $('messageContainer').scrollHeight;
@@ -344,110 +418,151 @@
 
         const systemLog = (msg, color = 'text-slate-400') => {
             const div = document.createElement('div');
-            div.className = `text-[9px] text-center ${color} my-4 uppercase tracking-[0.2em] font-black px-4`;
+            div.className = `text-[9px] text-center ${color} my-6 uppercase tracking-[0.3em] font-black px-10 leading-relaxed`;
             div.textContent = msg;
             $('messageContainer').appendChild(div);
         };
 
         const setupConnection = (conn) => {
             connection = conn;
-            conn.on('data', async (data) => {
-                if (data.type === 'handshake') {
+            conn.on('data', async (raw) => {
+                // Saneamiento de entrada
+                const data = sanitizeIncomingData(raw, raw.type);
+                if (!data) return;
+
+                if (data.type === 'handshake' || data.type === 'handshake_ack') {
                     const remotePubKey = await importPublicKey(data.pubKey);
-                    if (!myKeyPairs) {
+                    if (!remotePubKey) return securityFault("Fallo al importar llave pública remota.");
+                    
+                    if (!myKeyPairs && data.type === 'handshake') {
                         myKeyPairs = await generateKeyPair();
                         const myPub = await exportPublicKey(myKeyPairs.publicKey);
                         conn.send({ type: 'handshake_ack', pubKey: myPub, name: myName });
                     }
-                    sharedSecretKey = await deriveSharedSecret(myKeyPairs.privateKey, remotePubKey);
-                    await generateFingerprint(sharedSecretKey);
-                    activateChatUI(data.name);
-                }
-
-                if (data.type === 'handshake_ack') {
-                    const remotePubKey = await importPublicKey(data.pubKey);
-                    sharedSecretKey = await deriveSharedSecret(myKeyPairs.privateKey, remotePubKey);
-                    await generateFingerprint(sharedSecretKey);
-                    activateChatUI(data.name);
+                    sharedSecretRoot = await deriveRootSecret(myKeyPairs.privateKey, remotePubKey);
+                    await advanceRatchet();
+                    const sas = await getSAS(currentAesKey);
+                    showVerification(sas, data.name);
                 }
                 
                 if (data.type === 'chat') {
-                    const decrypted = await decryptData(data.payload, sharedSecretKey);
+                    if (!isSASVerified) return;
+                    const decrypted = await decryptData(data.payload, currentAesKey);
+                    if (!decrypted) return securityFault("Integridad de Ratchet violada: Desincronización de llaves detectada.");
+                    
                     const decoded = JSON.parse(new TextDecoder().decode(decrypted));
+                    
+                    // --- Anti-Replay Persistente ---
+                    if (decoded.seq <= lastReceivedSequence || processedPackageIds.has(decoded.uid) || Math.abs(Date.now() - decoded.ts) > CLOCK_SKEW_ALLOWED) {
+                        return console.error("Amenaza de Replay o Clock Skew bloqueada.");
+                    }
+                    processedPackageIds.add(decoded.uid);
+                    lastReceivedSequence = decoded.seq;
+
+                    await advanceRatchet();
                     const timeStr = new Date(decoded.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    addMessage(decoded.text, 'received', connection.metadata.name, timeStr);
+                    addMessage(decoded.text, 'received', connection.metadata?.name, timeStr);
                 }
 
                 if (data.type === 'file') {
-                    systemLog("Recibiendo archivo cifrado...", "text-green-500");
-                    const decryptedMeta = await decryptData(data.meta, sharedSecretKey);
+                    if (!isSASVerified) return;
+                    const decryptedMeta = await decryptData(data.meta, currentAesKey);
+                    if (!decryptedMeta) return;
                     const meta = JSON.parse(new TextDecoder().decode(decryptedMeta));
                     
-                    const decryptedFile = await decryptData(data.payload, sharedSecretKey);
+                    if (meta.size > MAX_FILE_SIZE || meta.seq <= lastReceivedSequence || processedPackageIds.has(meta.uid)) return;
+                    processedPackageIds.add(meta.uid);
+                    lastReceivedSequence = meta.seq;
+
+                    const decryptedFile = await decryptData(data.payload, currentAesKey);
                     const blob = new Blob([decryptedFile], { type: meta.type });
                     const blobUrl = URL.createObjectURL(blob);
+                    activeBlobUrls.push(blobUrl);
+                    if (activeBlobUrls.length > 3) URL.revokeObjectURL(activeBlobUrls.shift());
                     
+                    await advanceRatchet();
                     const timeStr = new Date(meta.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    addFileMessage(meta.name, meta.size, 'received', connection.metadata.name, blobUrl, timeStr);
+                    addFileMessage(meta.name, meta.size, 'received', connection.metadata?.name, blobUrl, timeStr);
                 }
             });
 
             conn.on('close', () => {
-                systemLog("Conexión finalizada", "text-red-500");
-                $('sendBtn').disabled = true;
-                $('fileBtn').disabled = true;
-                $('statusIndicator').className = 'w-1.5 h-1.5 rounded-full bg-red-400';
+                systemLog("Conexión abortada por el sistema", "text-red-600 font-black");
+                cleanupMemory();
+                setTimeout(() => location.reload(), 2500);
             });
         };
 
-        function activateChatUI(peerName) {
-            $('statusIndicator').className = 'w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]';
-            $('statusText').textContent = 'Encriptado';
-            $('sendBtn').disabled = false;
-            $('fileBtn').disabled = false;
-            $('displayPeerName').textContent = peerName || "Contacto";
-            systemLog("Handshake E2E verificado", "text-indigo-500");
+        async function advanceRatchet() {
+            const r = await rotateRatchet(sharedSecretRoot);
+            currentAesKey = r.aes;
+            sharedSecretRoot = r.root;
+            ratchetCount++;
+            $('ratchetIndicator').textContent = `Rotación: ${ratchetCount}`;
         }
 
-        // --- Acciones de Botón ---
+        function showVerification(sas, peerName) {
+            $('sasDisplay').textContent = sas;
+            $('displayPeerName').textContent = peerName || "Contacto";
+            $('sasModal').classList.remove('hidden');
+            $('displayRoomId').textContent = `ROOM: ${connection.peer}`;
+        }
+
+        function securityFault(msg) {
+            $('alertMsg').textContent = msg;
+            $('customAlert').classList.remove('hidden');
+            $('customAlert').classList.add('flex');
+            cleanupMemory();
+        }
+
+        function cleanupMemory() {
+            activeBlobUrls.forEach(url => URL.revokeObjectURL(url));
+            activeBlobUrls = [];
+            currentAesKey = null; 
+            sharedSecretRoot = null;
+            myKeyPairs = null;
+            isSASVerified = false;
+        }
 
         window.createRoom = () => {
             const name = $('nameInput').value.trim();
-            if (!name) return showAlert("Dato requerido", "Ingresa un alias.");
+            if (!name) return;
             myName = name;
             switchScreen('chatScreen');
-            initPeer(generateID());
+            initPeer(generateSecureID());
         };
 
         window.showJoin = () => {
-            if (!$('nameInput').value.trim()) return showAlert("Dato requerido", "Ingresa un alias primero.");
+            if (!$('nameInput').value.trim()) return;
             switchScreen('joinScreen');
         };
 
         const initPeer = (id) => {
             myPeer = new Peer(id, { debug: 1 });
             myPeer.on('open', (openedId) => {
-                $('displayRoomId').textContent = `SALA: ${openedId}`;
                 $('shareId').textContent = openedId;
                 if (id) $('shareSection').classList.remove('hidden');
             });
             myPeer.on('connection', async (conn) => {
                 pendingConn = conn;
-                $('requestText').textContent = `"${conn.metadata.name}" solicita handshake.`;
                 $('requestModal').classList.remove('hidden');
                 $('requestModal').classList.add('flex');
+            });
+            myPeer.on('error', (err) => {
+                if(err.type !== 'peer-unavailable') securityFault(`Error de red: ${err.type}`);
             });
         };
 
         window.connectToPeer = async () => {
             const targetId = $('joinIdInput').value.trim().toUpperCase();
+            if (!targetId) return;
             myName = $('nameInput').value.trim();
             initPeer(null); 
             setTimeout(() => {
-                const conn = myPeer.connect(targetId, { metadata: { name: myName }, reliable: true });
+                const conn = myPeer.connect(targetId, { reliable: true });
                 setupConnection(conn);
                 switchScreen('chatScreen');
-                systemLog("Solicitando handshake...");
+                systemLog("Intercambio de Material Criptográfico...", "text-indigo-400");
             }, 800);
         };
 
@@ -456,36 +571,49 @@
             $('requestModal').classList.remove('flex');
             if (accept && pendingConn) {
                 myKeyPairs = await generateKeyPair();
-                const myPublicB64 = await exportPublicKey(myKeyPairs.publicKey);
+                const myPub = await exportPublicKey(myKeyPairs.publicKey);
                 setupConnection(pendingConn);
-                pendingConn.send({ type: 'handshake', pubKey: myPublicB64, name: myName });
+                pendingConn.send({ type: 'handshake', pubKey: myPub, name: myName });
             } else if (pendingConn) pendingConn.close();
         };
 
         window.handleSendMessage = async () => {
             const text = $('chatInput').value.trim();
-            if (!text || !connection || !sharedSecretKey) return;
-            const now = new Date();
-            const payload = new TextEncoder().encode(JSON.stringify({ text: text, ts: now.getTime() }));
-            const encrypted = await encryptData(payload, sharedSecretKey);
+            if (!text || !connection || !currentAesKey || !isSASVerified) return;
+            
+            const now = Date.now();
+            if (now - lastSendTime < 500) return; // Rate Limiting (2 msgs/seg)
+            lastSendTime = now;
+
+            const payload = new TextEncoder().encode(JSON.stringify({ 
+                text: text, ts: now, seq: currentSendSequence++, uid: window.crypto.randomUUID()
+            }));
+            const encrypted = await encryptData(payload, currentAesKey);
             connection.send({ type: 'chat', payload: encrypted });
             
-            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            addMessage(text, 'sent', '', timeStr);
+            await advanceRatchet();
+            addMessage(text, 'sent', '', new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
             $('chatInput').value = '';
         };
 
-        const showAlert = (title, msg) => {
-            $('alertTitle').textContent = title;
-            $('alertMsg').textContent = msg;
-            $('customAlert').classList.remove('hidden');
-            $('customAlert').classList.add('flex');
-        };
-        window.closeAlert = () => $('customAlert').classList.add('hidden');
-        window.copyId = () => { navigator.clipboard.writeText($('shareId').textContent); systemLog("ID Copiado"); };
+        window.closeAlert = () => location.reload();
+        window.copyId = () => { navigator.clipboard.writeText($('shareId').textContent); systemLog("ID Privado Copiado"); };
         window.backToSetup = () => switchScreen('setupScreen');
-        const generateID = () => Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+        const generateSecureID = () => {
+            const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
+            const array = new Uint8Array(12);
+            window.crypto.getRandomValues(array);
+            let result = "";
+            for (let i = 0; i < array.length; i++) {
+                if (i === 6) result += "-";
+                result += charset[array[i] % charset.length];
+            }
+            return result;
+        };
+
         $('chatInput').onkeypress = (e) => { if(e.key === 'Enter') handleSendMessage(); };
+        window.onbeforeunload = cleanupMemory;
     </script>
 </body>
 </html>
