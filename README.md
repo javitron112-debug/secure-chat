@@ -4,29 +4,34 @@ Un chat seguro y privado que funciona completamente en el navegador, sin necesid
 
 ## ✨ Características
 
-- **🔒 Cifrado de extremo a extremo**: Usa DTLS-SRTP (estándar WebRTC) + conexión P2P directa
-- **🚫 Sin servidor**: No hay backend, no hay almacenamiento, no hay logs
-- **🌐 Solo navegador**: Todo funciona en HTML/JavaScript vanilla
+- **🔒 Cifrado de extremo a extremo**: Usa WebRTC cifrado con conexión P2P directa
+- **🚫 Sin servidor propio**: No requiere backend, solo usa PeerJS público para señalización
+- **🌐 Solo navegador**: Todo funciona en un solo archivo HTML
 - **📱 Responsive**: Funciona en escritorio y móvil
-- **🎨 Interfaz moderna**: Diseño limpio y fácil de usar
-- **⚡ Tiempo real**: Mensajes instantáneos sin latencia de servidor
-- **🆓 Gratis**: Usa servidores STUN públicos de Google
-- **📦 Un solo archivo**: Todo en un HTML de 15KB
+- **🎨 Interfaz moderna**: Diseño limpio y super fácil de usar
+- **⚡ Tiempo real**: Mensajes instantáneos P2P
+- **🆓 100% Gratis**: Usa infraestructura pública de PeerJS
+- **📦 Un solo archivo**: Todo en un HTML de ~20KB
+- **🔑 Sistema de salas simple**: Contraseñas de 4 caracteres fáciles de compartir
 
 ## 🔐 Seguridad
 
-### Cifrado multicapa:
-1. **DTLS 1.2/1.3**: Cifrado de transporte WebRTC (automático)
-2. **SRTP**: Cifrado de medios (automático)
-3. **Conexión P2P directa**: Sin intermediarios, sin servidores que puedan espiar
-4. **Sin almacenamiento**: Los mensajes solo existen en memoria del navegador
+### Cifrado automático:
+1. **WebRTC DTLS**: Cifrado de transporte (automático)
+2. **SRTP**: Cifrado de canal de datos (automático)
+3. **Conexión P2P directa**: Sin intermediarios que puedan leer tus mensajes
+4. **Sin almacenamiento**: Los mensajes solo existen en memoria
+
+### Tecnología PeerJS:
+- **Servidor de señalización**: Solo se usa para establecer la conexión inicial (no ve los mensajes)
+- **Conexión directa**: Una vez conectados, los mensajes van de navegador a navegador
+- **Sin logs**: Los mensajes nunca pasan por ningún servidor
 
 ### Lo que NO se almacena:
-- ❌ Mensajes
-- ❌ Metadatos
-- ❌ IPs (excepto temporalmente para establecer conexión)
-- ❌ Logs de conversación
+- ❌ Mensajes (se pierden al cerrar el navegador)
+- ❌ Historial de conversaciones
 - ❌ Información de usuario
+- ❌ Logs de actividad
 
 ## 🚀 Uso Rápido
 
@@ -68,59 +73,84 @@ https://TU-USUARIO.github.io/mi-chat-privado/
 
 ## 📖 Cómo Usar el Chat
 
-### Para iniciar una conversación:
+### Flujo super simple en 3 pasos:
 
-**Persona A (Host):**
-1. Abre el chat en tu navegador
-2. Click en "Crear nueva sala"
-3. Se generará un código
-4. Copia el código (botón "📋 Copiar código")
-5. Envía el código a tu contacto por cualquier medio (WhatsApp, email, etc.)
-6. Espera a que tu contacto te envíe su código de respuesta
-7. Pega el código de respuesta en el campo correspondiente
-8. Click en "Conectar"
-9. ¡Listo! Ya pueden chatear
+**Paso 1: Ingresa tu nombre**
+- Abre el chat en tu navegador
+- Escribe tu nombre
+- Click "Continuar"
 
-**Persona B (Cliente):**
-1. Abre el chat en tu navegador
-2. Click en "Unirse a sala existente"
-3. Pega el código que recibiste de tu contacto
-4. Click en "Generar código de respuesta"
-5. Copia el código generado
-6. Envía este código a tu contacto
-7. ¡Listo! Ya pueden chatear
+**Paso 2a: Si quieres CREAR una sala**
+1. Click en "🔑 Crear nueva sala"
+2. Se genera automáticamente una contraseña de 4 caracteres (ej: "K2M9")
+3. Click en "📋 Copiar contraseña"
+4. Comparte esa contraseña con tu contacto (WhatsApp, email, etc.)
+5. Click "Continuar"
+6. Espera a que tu contacto se una
 
-### Notas importantes:
-- Ambas personas deben estar online simultáneamente
-- Si se cierra el navegador, se pierde la conversación (no hay historial)
-- Para una nueva conversación, hay que generar nuevos códigos
+**Paso 2b: Si quieres UNIRTE a una sala**
+1. Click en "🚪 Unirme a una sala"
+2. Pega la contraseña que te compartieron (ej: "K2M9")
+3. Click "Unirse"
+4. ¡Listo! Se conectará automáticamente
+
+**Paso 3: ¡A chatear!**
+- Verás un mensaje cuando tu contacto se una
+- Los mensajes se envían en tiempo real
+- Todo está cifrado automáticamente
+
+### 📝 Notas importantes:
+- ✅ Ambas personas deben estar online simultáneamente
+- ✅ La contraseña es de solo 4 caracteres (fácil de compartir)
+- ✅ Solo 2 personas por sala
+- ❌ No hay historial (se pierde al cerrar el navegador)
+- ❌ Para nueva conversación, crear nueva sala
 
 ## 🛠️ Cómo Funciona
 
-### Tecnología WebRTC
-WebRTC (Web Real-Time Communication) permite comunicación P2P directa entre navegadores:
+### Tecnología: PeerJS + WebRTC
+
+PeerJS simplifica el uso de WebRTC para conexiones P2P:
 
 ```
-Navegador A  ←→  Navegador B
-   (tú)            (contacto)
+Navegador A  ←→  Servidor PeerJS  ←→  Navegador B
+   (tú)         (solo señalización)      (contacto)
+                        ↓
+                Conexión establecida
+                        ↓
+Navegador A  ←――――――――――――――――――――→  Navegador B
+   (tú)      Conexión P2P directa      (contacto)
+              (mensajes cifrados)
 ```
 
 ### Flujo de conexión:
 
-1. **Señalización manual**: 
-   - Los códigos que se intercambian son "descripciones SDP"
-   - Contienen información para establecer la conexión P2P
-   - Se intercambian manualmente (no hay servidor de señalización)
+1. **Pantallas de usuario**:
+   - Nombre → Crear/Unirse → Chat
 
-2. **Servidor STUN**:
-   - Solo se usa para descubrir tu IP pública
-   - Ayuda a atravesar NAT/firewalls
-   - Es público y no ve tus mensajes
+2. **Crear sala**:
+   - Se genera contraseña aleatoria de 4 caracteres
+   - Esta contraseña es el "Peer ID"
+   - El host se registra en el servidor PeerJS con ese ID
 
-3. **Conexión directa**:
-   - Una vez establecida, los mensajes van directo entre navegadores
-   - Cifrados con DTLS-SRTP (estándar WebRTC)
-   - El servidor STUN ya no participa
+3. **Unirse a sala**:
+   - El cliente introduce la contraseña
+   - Se conecta al Peer ID correspondiente
+   - Servidor PeerJS facilita el intercambio de información
+
+4. **Conexión P2P establecida**:
+   - Los navegadores negocian conexión directa
+   - Una vez establecida, el servidor PeerJS ya no participa
+   - Los mensajes van directamente entre navegadores
+   - Todo cifrado con WebRTC (DTLS + SRTP)
+
+### Servidores usados:
+
+- **Servidor PeerJS público** (0.peerjs.com):
+  - Solo para señalización inicial
+  - Ayuda a establecer la conexión P2P
+  - NO ve ni almacena mensajes
+  - Gratuito y de código abierto
 
 ## 🔒 Estado del Cifrado Postcuántico
 
@@ -142,19 +172,25 @@ Navegador A  ←→  Navegador B
 
 ## 🔧 Personalización
 
-### Cambiar servidores STUN:
-Edita la variable `iceServers` en el código:
+### Cambiar servidor PeerJS:
+Si quieres usar tu propio servidor PeerJS, edita esta línea en el código:
 ```javascript
-const iceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    // Agrega más servidores STUN aquí
-];
+peer = new Peer(id, {
+    host: '0.peerjs.com',  // Cambia esto
+    secure: true,
+    port: 443
+});
 ```
 
-### Servidores STUN públicos gratuitos:
-- Google: `stun:stun.l.google.com:19302`
-- Mozilla: `stun:stun.services.mozilla.com`
-- OpenRelay: `stun:openrelay.metered.ca:80`
+### Servidores PeerJS públicos alternativos:
+- PeerJS oficial: `0.peerjs.com`
+- Puedes montar tu propio servidor: https://github.com/peers/peerjs-server
+
+### Cambiar longitud de contraseña:
+Busca la función `generatePassword()` y cambia el número:
+```javascript
+for (let i = 0; i < 4; i++) {  // Cambia 4 por el número que quieras
+```
 
 ### Cambiar colores:
 Busca en el CSS la sección de gradientes:
@@ -165,7 +201,7 @@ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 ## ❓ Preguntas Frecuentes
 
 **P: ¿Es realmente seguro?**
-R: Sí. WebRTC usa cifrado DTLS-SRTP por estándar. Los mensajes van directo entre navegadores sin pasar por servidores.
+R: Sí. WebRTC usa cifrado DTLS-SRTP por estándar. Los mensajes van directo entre navegadores. El servidor PeerJS solo ayuda a establecer la conexión inicial, no ve los mensajes.
 
 **P: ¿Necesito instalar algo?**
 R: No. Solo un navegador moderno (Chrome, Firefox, Edge, Safari).
@@ -173,36 +209,44 @@ R: No. Solo un navegador moderno (Chrome, Firefox, Edge, Safari).
 **P: ¿Funciona en móviles?**
 R: Sí, perfectamente en Chrome y Safari móvil.
 
-**P: ¿Puedo chatear con alguien en otra red?**
-R: Sí, funciona entre cualquier red gracias a los servidores STUN.
+**P: ¿Puedo chatear con alguien en otra red/país?**
+R: Sí, funciona entre cualquier red del mundo.
 
 **P: ¿Se guardan los mensajes?**
 R: No. Todo está en memoria. Al cerrar el navegador, se pierde todo.
 
-**P: ¿Puedo usarlo sin internet?**
-R: No. Se necesita internet para la conexión P2P inicial (servidores STUN).
+**P: ¿Necesito cuenta o registro?**
+R: No. Solo un nombre (que puede ser inventado) y listo.
 
-**P: ¿Por qué tengo que intercambiar códigos manualmente?**
-R: Para evitar tener un servidor de señalización que podría comprometer la privacidad.
+**P: ¿La contraseña es segura con solo 4 caracteres?**
+R: Es suficiente para uso casual. Con 36 caracteres posibles (A-Z, 0-9) hay 1,679,616 combinaciones. Para más seguridad, puedes modificar el código para usar más caracteres.
+
+**P: ¿Qué pasa si dos personas usan la misma contraseña?**
+R: El segundo usuario que intente crear una sala con la misma contraseña verá un error. Cada contraseña puede usarse solo una vez por sesión.
 
 **P: ¿Qué pasa si cierra uno de los navegadores?**
-R: Se desconecta la conversación. Hay que generar nuevos códigos para reconectar.
+R: Se desconecta la conversación. Hay que crear una nueva sala para reconectar.
 
 **P: ¿Pueden chatear más de 2 personas?**
-R: En esta versión básica, no. Pero es posible implementarlo (ver "Mejoras Futuras").
+R: En esta versión básica, no. Pero PeerJS soporta múltiples conexiones, así que es posible implementarlo.
+
+**P: ¿Funciona sin internet?**
+R: No. Se necesita internet para conectar al servidor PeerJS y establecer la conexión P2P.
 
 ## 🆚 Comparación con otras soluciones
 
-| Característica | Este Chat | Signal/WhatsApp | Matrix Server | Jitsi |
+| Característica | Este Chat | Signal/WhatsApp | Matrix Server | Discord |
 |---|---|---|---|---|
 | Sin servidor propio | ✅ | ❌ | ❌ | ❌ |
-| Sin registro | ✅ | ❌ | ❌ | ✅ |
-| Sin abrir puertos | ✅ | ✅ | ❌ | ❌ |
-| Cifrado E2E | ✅ | ✅ | ✅ | ✅ |
+| Sin registro | ✅ | ❌ | ❌ | ❌ |
+| Sin abrir puertos | ✅ | ✅ | ❌ | ✅ |
+| Cifrado E2E | ✅ | ✅ | ✅ | ❌ |
 | Gratis | ✅ | ✅ | ✅ | ✅ |
-| Historial | ❌ | ✅ | ✅ | ❌ |
+| Historial | ❌ | ✅ | ✅ | ✅ |
 | Apps móviles nativas | ❌ | ✅ | ✅ | ✅ |
-| Videollamadas | ❌ | ✅ | ❌ | ✅ |
+| Múltiples usuarios | ❌ | ✅ | ✅ | ✅ |
+| Setup en 5 min | ✅ | ❌ | ❌ | ✅ |
+| Open source | ✅ | Parcial | ✅ | ❌ |
 
 ## 📝 Licencia
 
@@ -218,9 +262,10 @@ Este es un proyecto educativo. Para uso en producción con requisitos críticos 
 
 ## 📚 Recursos Adicionales
 
-- [WebRTC Documentation](https://webrtc.org/)
-- [MDN WebRTC Guide](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API)
-- [WebRTC Security](https://webrtcsecurity.github.io/)
+- **PeerJS Documentation**: https://peerjs.com/docs/
+- **PeerJS Server (para autoalojar)**: https://github.com/peers/peerjs-server
+- **WebRTC Documentation**: https://webrtc.org/
+- **MDN WebRTC Guide**: https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API
 
 ---
 

@@ -1,5 +1,7 @@
 # 🚀 Guía de 5 Minutos - Desplegar en GitHub Pages
 
+Tu chat P2P estará online en menos de 5 minutos, sin configuración, sin costos.
+
 ## Paso 1: Crear cuenta en GitHub (si no tienes)
 1. Ve a https://github.com
 2. Click en "Sign up"
@@ -101,7 +103,20 @@ Espera 1-2 minutos y los cambios estarán en vivo.
 - Limpia el caché del navegador (Ctrl+F5)
 
 ## 💡 Consejos
-- Usa un nombre de repositorio fácil de recordar
-- Puedes tener múltiples repositorios con GitHub Pages
+- Usa un nombre de repositorio fácil de recordar y compartir
+- Puedes tener múltiples repositorios con GitHub Pages (un chat por repo)
 - Cada repositorio tendrá su propia URL
 - Es gratis e ilimitado para repositorios públicos
+- Puedes compartir la URL directamente con quien quieras chatear
+
+## 🎉 ¡A usar!
+
+Una vez desplegado:
+1. Abre la URL en tu navegador
+2. Ingresa tu nombre
+3. Crea una sala → Se genera contraseña (ej: "K2M9")
+4. Comparte la contraseña con tu contacto
+5. Tu contacto abre la misma URL → Unirse → Pega contraseña
+6. ¡Listo! Ya están chateando de forma segura
+
+La mejor parte: **tus contactos NO necesitan cuenta de GitHub**, solo la URL que les compartas.
