@@ -155,7 +155,6 @@
 
         // --- Núcleo Criptográfico (SubtleCrypto) ---
         
-        // Derivar clave de la contraseña (ID de la sala)
         async function deriveKey(password) {
             const enc = new TextEncoder();
             const keyMaterial = await crypto.subtle.importKey(
@@ -163,7 +162,6 @@
                 { name: "PBKDF2" }, false, ["deriveKey"]
             );
             
-            // Usamos el propio ID como sal (en P2P sin DB, es un secreto compartido)
             return crypto.subtle.deriveKey(
                 {
                     name: "PBKDF2",
@@ -180,7 +178,7 @@
 
         async function encryptData(text, key) {
             const enc = new TextEncoder();
-            const iv = crypto.getRandomValues(new Uint8Array(12)); // IV aleatorio para cada mensaje
+            const iv = crypto.getRandomValues(new Uint8Array(12));
             const ciphertext = await crypto.subtle.encrypt(
                 { name: "AES-GCM", iv: iv },
                 key,
@@ -226,7 +224,7 @@
             }
             
             const textNode = document.createElement('div');
-            textNode.textContent = text; // Protección XSS automática
+            textNode.textContent = text;
             inner.appendChild(textNode);
             
             div.appendChild(inner);
@@ -251,9 +249,11 @@
                 $('shareId').textContent = openedId;
                 systemLog("Canal de señalización establecido");
                 
-                // Derivar la clave criptográfica usando el ID de la sala
-                // En este flujo, el ID es la clave secreta.
-                cryptoKey = await deriveKey(openedId);
+                // IMPORTANTE: Solo derivamos la clave aquí si somos el HOST (id no es null)
+                // Si somos el GUEST, la clave ya fue derivada en connectToPeer
+                if (!cryptoKey && id) {
+                    cryptoKey = await deriveKey(openedId);
+                }
                 
                 if (id) $('shareSection').classList.remove('hidden');
             });
@@ -326,6 +326,7 @@
             const name = $('nameInput').value.trim();
             if (!name) return showAlert("Campo Requerido", "Por favor, introduce un alias.");
             myName = name;
+            cryptoKey = null; // Limpiar clave previa
             switchScreen('chatScreen');
             initPeer(generateID());
         };
@@ -341,7 +342,7 @@
             
             myName = $('nameInput').value.trim();
             
-            // Derivamos la misma clave antes de conectar
+            // EL INVITADO DERIVA LA CLAVE ANTES DE CONECTARSE
             cryptoKey = await deriveKey(targetId);
             
             initPeer(null); 
@@ -360,7 +361,6 @@
             const text = $('chatInput').value.trim();
             if (!text || !connection || !cryptoKey) return;
             
-            // Cifrar el mensaje antes de enviarlo
             const encrypted = await encryptData(text, cryptoKey);
             
             connection.send({ 
@@ -383,3 +383,4 @@
         $('chatInput').onkeypress = (e) => { if(e.key === 'Enter') handleSendMessage(); };
     </script>
 </body>
+</html>
