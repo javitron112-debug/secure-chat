@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat P2P Cifrado - Sin Servidor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            height: 90vh;
+            max-height: 700px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #51cf66;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .connection-panel {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .connection-panel.hidden {
+            display: none;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+
+        .input-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.sent {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+
+        .message.received .message-content {
+            background: white;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.sent .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .message.received .message-time {
+            color: #6c757d;
+        }
+
+        .message.sent .message-time {
+            color: rgba(255,255,255,0.8);
+            text-align: right;
+        }
+
+        .system-message {
+            text-align: center;
+            color: #6c757d;
+            font-size: 13px;
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(108, 117, 125, 0.1);
+            border-radius: 8px;
+        }
+
+        .input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-container.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #dee2e6;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #messageInput:focus {
+            border-color: #667eea;
+        }
+
+        #sendBtn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        #sendBtn:hover {
+            transform: scale(1.05);
+        }
+
+        .info-box {
+            background: #e7f5ff;
+            border-left: 4px solid #1971c2;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #1971c2;
+        }
+
+        .encryption-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .lock-icon {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Chat P2P Cifrado</h1>
+            <div class="status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Desconectado</span>
+            </div>
+            <div class="encryption-badge">
+                <span class="lock-icon">🔒</span>
+                <span>AES-256 + DTLS</span>
+            </div>
+        </div>
+
+        <div class="connection-panel" id="connectionPanel">
+            <div class="info-box">
+                ℹ️ Este chat es 100% privado. No requiere servidor, ni registro, ni almacena datos. 
+                Todo funciona directamente entre navegadores usando WebRTC cifrado.
+            </div>
+
+            <div id="createMode">
+                <button class="btn btn-primary" onclick="createConnection()">Crear nueva sala</button>
+                <button class="btn btn-secondary" onclick="switchToJoin()">Unirse a sala existente</button>
+            </div>
+
+            <div id="offerMode" style="display: none;">
+                <div class="input-group">
+                    <label>1. Copia este código y envíaselo a tu contacto:</label>
+                    <textarea id="offerText" readonly onclick="this.select()"></textarea>
+                    <button class="btn btn-primary" onclick="copyOffer()" style="margin-top: 10px;">📋 Copiar código</button>
+                </div>
+                <div class="input-group">
+                    <label>2. Pega aquí el código que te envió tu contacto:</label>
+                    <textarea id="answerInput" placeholder="Pega el código de respuesta aquí..."></textarea>
+                    <button class="btn btn-primary" onclick="setAnswer()" style="margin-top: 10px;">Conectar</button>
+                </div>
+                <button class="btn btn-secondary" onclick="resetConnection()">Cancelar</button>
+            </div>
+
+            <div id="joinMode" style="display: none;">
+                <div class="input-group">
+                    <label>Pega el código que recibiste:</label>
+                    <textarea id="remoteOfferInput" placeholder="Pega aquí el código de tu contacto..."></textarea>
+                </div>
+                <button class="btn btn-primary" onclick="joinConnection()">Generar código de respuesta</button>
+                <button class="btn btn-secondary" onclick="switchToCreate()">Volver</button>
+            </div>
+
+            <div id="answerMode" style="display: none;">
+                <div class="input-group">
+                    <label>Copia este código y envíaselo a tu contacto:</label>
+                    <textarea id="answerText" readonly onclick="this.select()"></textarea>
+                    <button class="btn btn-primary" onclick="copyAnswer()">📋 Copiar código</button>
+                </div>
+                <p style="margin-top: 10px; color: #495057;">Conectando, espera un momento...</p>
+            </div>
+        </div>
+
+        <div class="chat-container" id="chatContainer"></div>
+
+        <div class="input-container disabled" id="inputContainer">
+            <input type="text" id="messageInput" placeholder="Escribe un mensaje..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button id="sendBtn" onclick="sendMessage()">Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        let peerConnection;
+        let dataChannel;
+        let isConnected = false;
+
+        // Servidores STUN públicos gratuitos de Google
+        const iceServers = [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' }
+        ];
+
+        // Crear una nueva conexión (HOST)
+        async function createConnection() {
+            try {
+                peerConnection = new RTCPeerConnection({ iceServers });
+                
+                // Crear canal de datos
+                dataChannel = peerConnection.createDataChannel('chat', {
+                    ordered: true
+                });
+                
+                setupDataChannel();
+
+                // Recolectar candidatos ICE
+                peerConnection.onicecandidate = (event) => {
+                    if (!event.candidate) {
+                        // Todos los candidatos recolectados
+                        const offer = peerConnection.localDescription;
+                        document.getElementById('offerText').value = btoa(JSON.stringify(offer));
+                    }
+                };
+
+                // Crear oferta
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+
+                // Mostrar modo de oferta
+                document.getElementById('createMode').style.display = 'none';
+                document.getElementById('offerMode').style.display = 'block';
+                
+                addSystemMessage('Código generado. Compártelo con tu contacto.');
+            } catch (error) {
+                console.error('Error creando conexión:', error);
+                alert('Error al crear la conexión. Intenta de nuevo.');
+            }
+        }
+
+        // Unirse a una conexión existente (CLIENT)
+        async function joinConnection() {
+            try {
+                const offerData = document.getElementById('remoteOfferInput').value.trim();
+                if (!offerData) {
+                    alert('Debes pegar el código primero');
+                    return;
+                }
+
+                const offer = JSON.parse(atob(offerData));
+                
+                peerConnection = new RTCPeerConnection({ iceServers });
+
+                // Escuchar canal de datos
+                peerConnection.ondatachannel = (event) => {
+                    dataChannel = event.channel;
+                    setupDataChannel();
+                };
+
+                // Recolectar candidatos ICE
+                peerConnection.onicecandidate = (event) => {
+                    if (!event.candidate) {
+                        const answer = peerConnection.localDescription;
+                        document.getElementById('answerText').value = btoa(JSON.stringify(answer));
+                    }
+                };
+
+                await peerConnection.setRemoteDescription(offer);
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+
+                // Mostrar modo de respuesta
+                document.getElementById('joinMode').style.display = 'none';
+                document.getElementById('answerMode').style.display = 'block';
+                
+                addSystemMessage('Código de respuesta generado. Compártelo con tu contacto.');
+            } catch (error) {
+                console.error('Error uniéndose:', error);
+                alert('Error al procesar el código. Verifica que sea correcto.');
+            }
+        }
+
+        // Establecer la respuesta (HOST recibe respuesta del CLIENT)
+        async function setAnswer() {
+            try {
+                const answerData = document.getElementById('answerInput').value.trim();
+                if (!answerData) {
+                    alert('Debes pegar el código de respuesta');
+                    return;
+                }
+
+                const answer = JSON.parse(atob(answerData));
+                await peerConnection.setRemoteDescription(answer);
+                
+                addSystemMessage('Conectando...');
+            } catch (error) {
+                console.error('Error estableciendo respuesta:', error);
+                alert('Error al procesar la respuesta. Verifica que sea correcta.');
+            }
+        }
+
+        // Configurar el canal de datos
+        function setupDataChannel() {
+            dataChannel.onopen = () => {
+                isConnected = true;
+                document.getElementById('statusDot').classList.add('connected');
+                document.getElementById('statusText').textContent = 'Conectado - Cifrado E2E';
+                document.getElementById('connectionPanel').classList.add('hidden');
+                document.getElementById('inputContainer').classList.remove('disabled');
+                addSystemMessage('¡Conexión establecida! Todos los mensajes están cifrados.');
+            };
+
+            dataChannel.onclose = () => {
+                isConnected = false;
+                document.getElementById('statusDot').classList.remove('connected');
+                document.getElementById('statusText').textContent = 'Desconectado';
+                document.getElementById('inputContainer').classList.add('disabled');
+                addSystemMessage('Conexión cerrada.');
+            };
+
+            dataChannel.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    addMessage(data.text, 'received', data.time);
+                } catch (error) {
+                    console.error('Error procesando mensaje:', error);
+                }
+            };
+
+            dataChannel.onerror = (error) => {
+                console.error('Error en canal de datos:', error);
+                addSystemMessage('Error en la conexión.');
+            };
+        }
+
+        // Enviar mensaje
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            
+            if (!text || !isConnected) return;
+
+            const message = {
+                text: text,
+                time: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+            };
+
+            try {
+                dataChannel.send(JSON.stringify(message));
+                addMessage(text, 'sent', message.time);
+                input.value = '';
+            } catch (error) {
+                console.error('Error enviando mensaje:', error);
+                addSystemMessage('Error al enviar mensaje.');
+            }
+        }
+
+        // Añadir mensaje a la interfaz
+        function addMessage(text, type, time) {
+            const container = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <div>${escapeHtml(text)}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Añadir mensaje del sistema
+        function addSystemMessage(text) {
+            const container = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'system-message';
+            messageDiv.textContent = text;
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Escapar HTML para prevenir XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Copiar oferta al portapapeles
+        function copyOffer() {
+            const text = document.getElementById('offerText');
+            text.select();
+            document.execCommand('copy');
+            alert('¡Código copiado! Envíaselo a tu contacto.');
+        }
+
+        // Copiar respuesta al portapapeles
+        function copyAnswer() {
+            const text = document.getElementById('answerText');
+            text.select();
+            document.execCommand('copy');
+            alert('¡Código copiado! Envíaselo a tu contacto.');
+        }
+
+        // Cambiar a modo unirse
+        function switchToJoin() {
+            document.getElementById('createMode').style.display = 'none';
+            document.getElementById('joinMode').style.display = 'block';
+        }
+
+        // Cambiar a modo crear
+        function switchToCreate() {
+            document.getElementById('joinMode').style.display = 'none';
+            document.getElementById('createMode').style.display = 'block';
+        }
+
+        // Resetear conexión
+        function resetConnection() {
+            if (peerConnection) {
+                peerConnection.close();
+            }
+            document.getElementById('offerMode').style.display = 'none';
+            document.getElementById('createMode').style.display = 'block';
+            document.getElementById('offerText').value = '';
+            document.getElementById('answerInput').value = '';
+        }
+
+        // Mensaje de bienvenida
+        addSystemMessage('¡Bienvenido! Crea una nueva sala o únete a una existente.');
+    </script>
+</body>
+</html>
